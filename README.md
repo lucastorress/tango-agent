@@ -126,6 +126,49 @@ Os scripts de backup pedem o token em runtime se `.env.infra` nao existir.
 - O `.env.infra` nao precisa ir pro VPS — o script de backup pede o token Hetzner em runtime
 - **Nunca** cole API keys em chats, issues ou repositorios publicos
 
+## Agentes
+
+O Tango Agent usa uma arquitetura **multi-agent** com dois agentes pre-configurados:
+
+### tango (principal)
+
+Assistente pessoal que conversa pelo Telegram. Lida com conversas, lembretes, pesquisa e memoria.
+
+- **Perfil**: `messaging` + `memory` + `web`
+- **Seguranca**: sem acesso a arquivos, exec ou automacao
+- **Heartbeat**: a cada 30 min (8h-24h) — verifica lembretes e tarefas pendentes
+- **Delegacao**: tarefas tecnicas sao delegadas ao agente **dev** via agent-to-agent
+
+### dev (desenvolvimento)
+
+Agente tecnico com acesso a arquivos, git, GitHub e execucao de comandos. Nao fala diretamente pelo Telegram.
+
+- **Perfil**: `coding` + `fs` + `runtime` + `exec`
+- **Workspace**: isolado em `data/workspace-dev/`
+- **Comunicacao**: recebe tarefas do tango e devolve resultados
+
+### Bootstrap files
+
+Cada agente tem arquivos de bootstrap no seu workspace que definem persona e instrucoes:
+
+| Arquivo | tango | dev | Descricao |
+|---------|-------|-----|-----------|
+| `IDENTITY.md` | sim | sim | Nome e emoji do agente |
+| `SOUL.md` | sim | - | Persona e tom de comunicacao |
+| `USER.md` | sim | - | Info do usuario (Lucas) |
+| `AGENTS.md` | sim | sim | Instrucoes de comportamento |
+| `HEARTBEAT.md` | sim | - | Checklist do heartbeat |
+
+Esses arquivos sao gerados automaticamente pelo `make setup` (somente se nao existirem).
+
+### Memoria persistente
+
+Cada agente tem um diretorio `memory/` no seu workspace para guardar informacoes entre sessoes. O OpenClaw faz flush automatico da memoria de compactacao para esses arquivos (`compaction.memoryFlush`).
+
+### Cron
+
+Cron habilitado globalmente para tarefas agendadas. O agente tango pode criar e gerenciar tarefas cron via Telegram.
+
 ## Config do OpenClaw (openclaw.json)
 
 O arquivo `config/openclaw.example.json` e o template. O `make setup` copia automaticamente para `data/config/openclaw.json`.
@@ -139,8 +182,9 @@ O arquivo `config/openclaw.example.json` e o template. O `make setup` copia auto
 | `session` | `dmScope: per-channel-peer` | Sessoes separadas por contato |
 | `channels.telegram` | `dmPolicy: allowlist` | So responde ao seu Telegram User ID |
 | `agents` | Sonnet 4.6 + fallback Haiku 4.5 | `/model sonnet` ou `/model haiku` no Telegram |
-| `tools` | `profile: messaging` | Apenas mensagens (sem acesso a arquivos/shell) |
-| `tools` | `deny: automation, runtime` | Bloqueia exec, cron, automacao |
+| `agents.list` | tango (messaging) + dev (coding) | Multi-agent com agent-to-agent |
+| `tools` | agentToAgent habilitado | tango delega tarefas ao dev |
+| `cron` | enabled | Tarefas agendadas |
 | `logging` | `redactSensitive: tools` | Redacta dados sensiveis nos logs |
 
 ### Como encontrar seu Telegram User ID
@@ -320,5 +364,18 @@ tango-agent/
 ├── config/
 │   ├── openclaw.example.json   # Template de config OpenClaw
 │   └── Caddyfile               # Config do reverse proxy
+├── data/                       # (gerado pelo setup, no .gitignore)
+│   ├── config/                 # openclaw.json + identity/
+│   ├── workspace/              # Workspace do agente tango
+│   │   ├── memory/             # Memoria persistente
+│   │   ├── IDENTITY.md         # Bootstrap: nome e emoji
+│   │   ├── SOUL.md             # Bootstrap: persona
+│   │   ├── USER.md             # Bootstrap: info do usuario
+│   │   ├── AGENTS.md           # Bootstrap: instrucoes
+│   │   └── HEARTBEAT.md        # Bootstrap: checklist heartbeat
+│   └── workspace-dev/          # Workspace do agente dev
+│       ├── memory/             # Memoria persistente
+│       ├── IDENTITY.md         # Bootstrap: nome e emoji
+│       └── AGENTS.md           # Bootstrap: instrucoes
 └── tango-openclaw/             # [submodule] OpenClaw
 ```

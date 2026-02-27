@@ -53,15 +53,50 @@
         }
       },
       "thinkingDefault": "low",
-      "timeoutSeconds": 120
-    }
+      "timeoutSeconds": 120,
+      "compaction": {
+        "memoryFlush": { "enabled": true }
+      },
+      "subagents": {
+        "maxSpawnDepth": 1,
+        "maxConcurrent": 4
+      }
+    },
+    "list": [
+      {
+        "id": "tango",
+        "default": true,
+        "tools": {
+          "profile": "messaging",
+          "allow": ["group:memory", "group:web"],
+          "deny": ["group:automation", "group:runtime"],
+          "exec": { "security": "deny" }
+        },
+        "heartbeat": {
+          "enabled": true,
+          "intervalMinutes": 30,
+          "activeHours": { "start": 8, "end": 24 }
+        },
+        "subagents": { "enabled": true }
+      },
+      {
+        "id": "dev",
+        "tools": {
+          "profile": "coding",
+          "allow": ["group:fs", "group:runtime", "exec"],
+          "deny": []
+        },
+        "workspace": "workspace-dev",
+        "heartbeat": { "enabled": false },
+        "subagents": { "enabled": false }
+      }
+    ]
   },
 
   "tools": {
-    "profile": "messaging",
-    "deny": ["group:automation", "group:runtime"],
-    "exec": {
-      "security": "deny"
+    "agentToAgent": {
+      "enabled": true,
+      "allow": ["tango", "dev"]
     },
     "web": {
       "search": { "enabled": true },
@@ -70,6 +105,10 @@
     "elevated": {
       "enabled": false
     }
+  },
+
+  "cron": {
+    "enabled": true
   },
 
   "logging": {
