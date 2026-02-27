@@ -1,0 +1,3 @@
+[submodule "tango-openclaw"]
+	path = tango-openclaw
+	url = https://github.com/lucastorress/tango-openclaw.git

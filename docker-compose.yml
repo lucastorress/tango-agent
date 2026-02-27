@@ -1,0 +1,65 @@
+name: tango-agent
+
+services:
+  tango-gateway:
+    build:
+      context: ./tango-openclaw
+      dockerfile: Dockerfile
+    image: ${OPENCLAW_IMAGE:-tango-openclaw:latest}
+    container_name: tango-gateway
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOME: /home/node
+      NODE_ENV: production
+      TERM: xterm-256color
+    volumes:
+      - ${OPENCLAW_CONFIG_DIR:-./data/config}:/home/node/.openclaw
+      - ${OPENCLAW_WORKSPACE_DIR:-./data/workspace}:/home/node/.openclaw/workspace
+    ports:
+      - "127.0.0.1:18789:18789"
+    command:
+      [
+        "node", "dist/index.js", "gateway",
+        "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}",
+        "--port", "18789",
+        "--allow-unconfigured",
+      ]
+    init: true
+    healthcheck:
+      test: ["CMD", "node", "dist/index.js", "gateway", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  tango-cli:
+    build:
+      context: ./tango-openclaw
+      dockerfile: Dockerfile
+    image: ${OPENCLAW_IMAGE:-tango-openclaw:latest}
+    container_name: tango-cli
+    env_file: .env
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      BROWSER: echo
+    volumes:
+      - ${OPENCLAW_CONFIG_DIR:-./data/config}:/home/node/.openclaw
+      - ${OPENCLAW_WORKSPACE_DIR:-./data/workspace}:/home/node/.openclaw/workspace
+    stdin_open: true
+    tty: true
+    init: true
+    entrypoint: ["node", "dist/index.js"]
+    profiles: ["cli"]

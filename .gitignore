@@ -1,0 +1,16 @@
+# Segredos - NUNCA commitar
+.env
+config/openclaw.json
+data/
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
