@@ -1,7 +1,9 @@
 # Segredos - NUNCA commitar
 .env
+.env.infra
 config/openclaw.json
 data/
+backups/
 
 # Docker
 docker-compose.override.yml

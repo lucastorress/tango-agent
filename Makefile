@@ -1,4 +1,4 @@
-.PHONY: build up down logs status cli setup deploy update health
+.PHONY: build up up-proxy down logs status cli setup deploy update health harden security-check backup snapshot doctor restart
 
 build:
 	docker compose build
@@ -6,8 +6,14 @@ build:
 up:
 	docker compose up -d tango-gateway
 
+up-proxy:
+	docker compose --profile proxy up -d
+
 down:
-	docker compose down
+	docker compose --profile proxy down
+
+restart:
+	docker compose restart tango-gateway
 
 logs:
 	docker compose logs -f tango-gateway
@@ -17,6 +23,9 @@ status:
 
 health:
 	docker compose exec tango-gateway node dist/index.js gateway health
+
+doctor:
+	docker compose exec tango-gateway node dist/index.js doctor
 
 cli:
 	docker compose --profile cli run --rm tango-cli $(CMD)
@@ -35,3 +44,15 @@ update:
 	docker compose up -d tango-gateway
 	@echo "Commitar submodule atualizado:"
 	@echo "  git add tango-openclaw && git commit -m 'chore: update openclaw submodule'"
+
+harden:
+	@echo "Uso: ssh root@VPS_IP 'bash -s' < scripts/harden-vps.sh"
+
+security-check:
+	bash scripts/security-check.sh
+
+backup:
+	bash scripts/backup.sh
+
+snapshot:
+	bash scripts/backup.sh --snapshot

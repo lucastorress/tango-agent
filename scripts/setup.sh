@@ -3,6 +3,15 @@ set -euo pipefail
 
 echo "=== Tango Agent - Setup ==="
 
+# Funcao sed compativel com macOS e Linux
+sed_inplace() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
+
 # 1. Inicializar submodule se necessario
 if [ ! -f tango-openclaw/package.json ]; then
     echo "Inicializando submodule..."
@@ -10,7 +19,7 @@ if [ ! -f tango-openclaw/package.json ]; then
 fi
 
 # 2. Criar diretorios de dados
-mkdir -p data/config/identity data/workspace
+mkdir -p data/config/identity data/workspace backups
 
 # 3. Corrigir permissoes (uid 1000 = user 'node' no container)
 if command -v chown &>/dev/null; then
@@ -27,29 +36,70 @@ fi
 if [ ! -f .env ]; then
     cp .env.example .env
     TOKEN=$(openssl rand -hex 32)
-    # Compativel com macOS e Linux
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/CHANGE_ME/$TOKEN/" .env
-    else
-        sed -i "s/CHANGE_ME/$TOKEN/" .env
-    fi
+    sed_inplace "s/CHANGE_ME/$TOKEN/" .env
+    chmod 600 .env
     echo ""
-    echo "Arquivo .env criado com token gerado automaticamente."
-    echo "IMPORTANTE: Edite .env e preencha suas API keys:"
-    echo "  - ANTHROPIC_API_KEY"
-    echo "  - TELEGRAM_BOT_TOKEN"
+    echo "Arquivo .env criado (permissoes 600, token auto-gerado)."
     echo ""
 else
     echo ".env ja existe, pulando."
+    # Garantir permissoes mesmo se ja existia
+    chmod 600 .env
 fi
 
-# 5. Build da imagem
+# 5. Gerar openclaw.json se nao existir
+if [ ! -f data/config/openclaw.json ]; then
+    cp config/openclaw.example.json data/config/openclaw.json
+
+    # Se TELEGRAM_USER_ID estiver no .env, injetar no config
+    set -a
+    source .env
+    set +a
+
+    if [ -n "${TELEGRAM_USER_ID:-}" ]; then
+        sed_inplace "s/SEU_TELEGRAM_USER_ID/$TELEGRAM_USER_ID/" data/config/openclaw.json
+        echo "openclaw.json criado com Telegram User ID: $TELEGRAM_USER_ID"
+    else
+        echo "openclaw.json criado."
+        echo ""
+        echo "IMPORTANTE: Configure seu Telegram User ID:"
+        echo "  1. Fale com @userinfobot no Telegram para descobrir seu ID"
+        echo "  2. Edite TELEGRAM_USER_ID no .env"
+        echo "  3. Rode: make setup (para atualizar o config)"
+        echo "  Ou edite diretamente: data/config/openclaw.json"
+        echo ""
+    fi
+
+    chmod 600 data/config/openclaw.json
+else
+    echo "openclaw.json ja existe, pulando."
+
+    # Atualizar Telegram User ID se estava faltando e agora esta no .env
+    set -a
+    source .env
+    set +a
+
+    if [ -n "${TELEGRAM_USER_ID:-}" ] && grep -q "SEU_TELEGRAM_USER_ID" data/config/openclaw.json 2>/dev/null; then
+        sed_inplace "s/SEU_TELEGRAM_USER_ID/$TELEGRAM_USER_ID/" data/config/openclaw.json
+        echo "Telegram User ID atualizado no openclaw.json: $TELEGRAM_USER_ID"
+    fi
+fi
+
+# 6. Build da imagem
+echo ""
 echo "Building Docker image..."
 docker compose build
 
 echo ""
 echo "=== Setup completo! ==="
+echo ""
 echo "Proximos passos:"
-echo "  1. Edite .env com suas API keys"
-echo "  2. make up"
-echo "  3. make logs"
+if grep -q "sk-ant-\.\.\." .env 2>/dev/null; then
+    echo "  1. Edite .env com suas API keys (ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN)"
+fi
+if grep -q "SEU_TELEGRAM_USER_ID" data/config/openclaw.json 2>/dev/null; then
+    echo "  2. Descubra seu Telegram User ID (@userinfobot) e coloque no .env"
+    echo "     Depois rode: make setup"
+fi
+echo "  - make up     (subir gateway)"
+echo "  - make logs   (acompanhar logs)"

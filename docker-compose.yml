@@ -1,5 +1,9 @@
 name: tango-agent
 
+networks:
+  tango-net:
+    driver: bridge
+
 services:
   tango-gateway:
     build:
@@ -18,6 +22,8 @@ services:
       - ${OPENCLAW_WORKSPACE_DIR:-./data/workspace}:/home/node/.openclaw/workspace
     ports:
       - "127.0.0.1:18789:18789"
+    networks:
+      - tango-net
     command:
       [
         "node", "dist/index.js", "gateway",
@@ -35,7 +41,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 4G
         reservations:
           memory: 512M
     logging:
@@ -43,6 +49,31 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  tango-caddy:
+    image: caddy:2-alpine
+    container_name: tango-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - tango-net
+    depends_on:
+      tango-gateway:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+    profiles: ["proxy"]
 
   tango-cli:
     build:
@@ -58,8 +89,14 @@ services:
     volumes:
       - ${OPENCLAW_CONFIG_DIR:-./data/config}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR:-./data/workspace}:/home/node/.openclaw/workspace
+    networks:
+      - tango-net
     stdin_open: true
     tty: true
     init: true
     entrypoint: ["node", "dist/index.js"]
     profiles: ["cli"]
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,3 @@
+{$DOMAIN} {
+	reverse_proxy tango-gateway:18789
+}
