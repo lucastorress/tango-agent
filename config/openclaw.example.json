@@ -41,62 +41,132 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "anthropic/claude-sonnet-4-6",
-        "fallbacks": ["anthropic/claude-haiku-4-5"]
+        "primary": "anthropic/claude-haiku-4-5",
+        "fallbacks": ["anthropic/claude-sonnet-4-6"]
       },
       "models": {
+        "anthropic/claude-opus-4-6": {
+          "alias": "opus",
+          "params": { "cacheRetention": "long" }
+        },
         "anthropic/claude-sonnet-4-6": {
-          "alias": "sonnet"
+          "alias": "sonnet",
+          "params": { "cacheRetention": "long" }
         },
         "anthropic/claude-haiku-4-5": {
-          "alias": "haiku"
+          "alias": "haiku",
+          "params": { "cacheRetention": "short" }
         }
       },
+      "contextTokens": 100000,
       "thinkingDefault": "low",
       "timeoutSeconds": 120,
       "compaction": {
+        "enabled": true,
+        "reserveTokens": 16384,
         "memoryFlush": { "enabled": true }
+      },
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "keepLastAssistants": 3,
+        "softTrimRatio": 0.3,
+        "hardClearRatio": 0.5,
+        "softTrim": { "maxChars": 4000, "headChars": 1500, "tailChars": 1500 },
+        "hardClear": { "enabled": true }
       },
       "subagents": {
         "maxSpawnDepth": 1,
-        "maxConcurrent": 4
+        "maxConcurrent": 2,
+        "allowAgents": ["atlas", "pixel", "hawk", "sentinel"]
       }
     },
     "list": [
       {
         "id": "tango",
         "default": true,
+        "model": {
+          "primary": "anthropic/claude-haiku-4-5",
+          "fallbacks": ["anthropic/claude-sonnet-4-6"]
+        },
         "tools": {
           "profile": "messaging",
-          "allow": ["group:memory", "group:web"],
-          "deny": ["group:automation", "group:runtime"],
+          "alsoAllow": ["group:memory", "group:web", "sessions_spawn", "cron", "agents_list", "image"],
+          "deny": ["gateway", "group:runtime"],
           "exec": { "security": "deny" }
         },
+        "skills": ["weather"],
         "heartbeat": {
-          "enabled": true,
-          "intervalMinutes": 30,
-          "activeHours": { "start": 8, "end": 24 }
-        },
-        "subagents": { "enabled": true }
+          "every": "30m",
+          "activeHours": { "start": "08:00", "end": "24:00" }
+        }
       },
       {
-        "id": "dev",
-        "tools": {
-          "profile": "coding",
-          "allow": ["group:fs", "group:runtime", "exec"],
-          "deny": []
+        "id": "atlas",
+        "model": {
+          "primary": "anthropic/claude-haiku-4-5",
+          "fallbacks": ["anthropic/claude-sonnet-4-6"]
         },
-        "workspace": "workspace-dev",
-        "heartbeat": { "enabled": false },
-        "subagents": { "enabled": false }
+        "tools": {
+          "profile": "messaging",
+          "alsoAllow": ["group:memory", "group:web", "image"],
+          "deny": ["gateway", "group:runtime"],
+          "exec": { "security": "deny" }
+        },
+        "skills": ["summarize"],
+        "workspace": "workspace-atlas"
+      },
+      {
+        "id": "pixel",
+        "model": {
+          "primary": "anthropic/claude-sonnet-4-6",
+          "fallbacks": ["anthropic/claude-haiku-4-5"]
+        },
+        "tools": { "profile": "coding" },
+        "skills": ["github", "gh-issues"],
+        "workspace": "workspace-pixel"
+      },
+      {
+        "id": "hawk",
+        "model": {
+          "primary": "anthropic/claude-sonnet-4-6",
+          "fallbacks": ["anthropic/claude-haiku-4-5"]
+        },
+        "tools": { "profile": "coding" },
+        "skills": ["github", "gh-issues", "session-logs"],
+        "workspace": "workspace-hawk"
+      },
+      {
+        "id": "sentinel",
+        "model": {
+          "primary": "anthropic/claude-sonnet-4-6",
+          "fallbacks": ["anthropic/claude-haiku-4-5"]
+        },
+        "tools": { "profile": "coding" },
+        "skills": ["healthcheck", "session-logs"],
+        "workspace": "workspace-sentinel"
       }
     ]
+  },
+
+  "memorySearch": {
+    "provider": "local",
+    "query": {
+      "maxResults": 10,
+      "hybrid": {
+        "enabled": true,
+        "vectorWeight": 0.7,
+        "textWeight": 0.3,
+        "mmr": { "enabled": true, "lambda": 0.5 },
+        "temporalDecay": { "enabled": true, "halfLifeDays": 90 }
+      }
+    },
+    "sync": { "onSessionStart": true, "onSearch": true }
   },
 
   "tools": {
     "agentToAgent": {
       "enabled": true,
-      "allow": ["tango", "dev"]
+      "allow": ["tango", "atlas", "pixel", "hawk", "sentinel"]
     },
     "web": {
       "search": { "enabled": true },
@@ -104,6 +174,12 @@
     },
     "elevated": {
       "enabled": false
+    },
+    "loopDetection": {
+      "enabled": true,
+      "historySize": 20,
+      "warningThreshold": 3,
+      "criticalThreshold": 5
     }
   },
 

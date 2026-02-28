@@ -1,4 +1,4 @@
-.PHONY: build up up-proxy down logs status cli setup deploy update health harden security-check backup snapshot doctor restart
+.PHONY: build up up-proxy down logs status cli setup deploy update health harden security-check backup snapshot doctor restart sync-bootstrap
 
 build:
 	docker compose build
@@ -56,3 +56,6 @@ backup:
 
 snapshot:
 	bash scripts/backup.sh --snapshot
+
+sync-bootstrap:
+	@bash scripts/sync-bootstrap.sh
