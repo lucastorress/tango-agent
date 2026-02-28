@@ -42,7 +42,7 @@
     "defaults": {
       "model": {
         "primary": "anthropic/claude-haiku-4-5",
-        "fallbacks": ["anthropic/claude-sonnet-4-6"]
+        "fallbacks": ["openrouter/moonshotai/kimi-k2.5", "openrouter/google/gemini-2.5-flash", "anthropic/claude-sonnet-4-6"]
       },
       "models": {
         "anthropic/claude-opus-4-6": {
@@ -64,7 +64,7 @@
       },
       "contextTokens": 32000,
       "thinkingDefault": "low",
-      "timeoutSeconds": 120,
+      "timeoutSeconds": 90,
       "compaction": {
         "mode": "safeguard",
         "reserveTokens": 16384,
@@ -92,7 +92,7 @@
         "default": true,
         "model": {
           "primary": "anthropic/claude-haiku-4-5",
-          "fallbacks": ["anthropic/claude-sonnet-4-6"]
+          "fallbacks": ["openrouter/moonshotai/kimi-k2.5", "openrouter/google/gemini-2.5-flash"]
         },
         "tools": {
           "profile": "messaging",
@@ -105,7 +105,7 @@
           "allowAgents": ["atlas", "pixel", "hawk", "sentinel"]
         },
         "heartbeat": {
-          "every": "1h",
+          "every": "30m",
           "model": "openrouter/google/gemini-2.5-flash-lite",
           "activeHours": { "start": "08:00", "end": "24:00" }
         }
@@ -114,7 +114,7 @@
         "id": "atlas",
         "model": {
           "primary": "openrouter/moonshotai/kimi-k2.5",
-          "fallbacks": ["anthropic/claude-haiku-4-5"]
+          "fallbacks": ["openrouter/google/gemini-2.5-flash", "anthropic/claude-haiku-4-5"]
         },
         "tools": {
           "profile": "messaging",
@@ -128,7 +128,7 @@
         "id": "pixel",
         "model": {
           "primary": "openrouter/minimax/minimax-m2.5",
-          "fallbacks": ["anthropic/claude-sonnet-4-6"]
+          "fallbacks": ["openrouter/moonshotai/kimi-k2.5", "openrouter/google/gemini-2.5-flash", "anthropic/claude-sonnet-4-6"]
         },
         "tools": { "profile": "coding" },
         "skills": ["github", "gh-issues", "gog"],
@@ -138,7 +138,7 @@
         "id": "hawk",
         "model": {
           "primary": "openrouter/minimax/minimax-m2.5",
-          "fallbacks": ["anthropic/claude-sonnet-4-6"]
+          "fallbacks": ["openrouter/moonshotai/kimi-k2.5", "openrouter/google/gemini-2.5-flash", "anthropic/claude-sonnet-4-6"]
         },
         "tools": { "profile": "coding" },
         "skills": ["github", "gh-issues", "session-logs"],
@@ -148,7 +148,7 @@
         "id": "sentinel",
         "model": {
           "primary": "openrouter/minimax/minimax-m2.5",
-          "fallbacks": ["anthropic/claude-sonnet-4-6"]
+          "fallbacks": ["openrouter/moonshotai/kimi-k2.5", "openrouter/google/gemini-2.5-flash", "anthropic/claude-sonnet-4-6"]
         },
         "tools": { "profile": "coding" },
         "skills": ["healthcheck", "session-logs"],
