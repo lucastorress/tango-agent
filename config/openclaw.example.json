@@ -176,7 +176,7 @@
     },
     "subagents": {
       "tools": {
-        "alsoAllow": ["read", "write", "edit", "apply_patch", "exec", "process", "memory_search", "memory_get", "image", "cron"]
+        "allow": ["read", "write", "edit", "apply_patch", "exec", "process", "web_search", "web_fetch", "memory_search", "memory_get", "sessions_list", "sessions_history", "sessions_send", "image", "cron", "session_status"]
       }
     },
     "elevated": {
