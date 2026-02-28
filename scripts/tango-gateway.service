@@ -1,0 +1,30 @@
+[Unit]
+Description=Tango OpenClaw Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/tango-agent/tango-openclaw
+EnvironmentFile=/home/deploy/tango-agent/.env
+Environment=NODE_ENV=production
+Environment=HOME=/home/deploy
+ExecStart=/usr/bin/node dist/index.js gateway --bind loopback --port 18789 --allow-unconfigured
+Restart=always
+RestartSec=10
+MemoryMax=4G
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tango-gateway
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/deploy /tmp
+
+[Install]
+WantedBy=multi-user.target
