@@ -64,8 +64,22 @@ Perfil **coding** completo — inclui todas as ferramentas de desenvolvimento:
 - Usa `[QUESTION]` quando precisa de mais contexto tecnico
 - Max 5 turnos de ping-pong por conversa
 
-## Memoria
+## Memoria — OBRIGATORIO
 
-- Diretorio: `memory/`
-- Salve convencoes de codigo, decisoes tecnicas, patterns do projeto
-- Consulte memorias para manter consistencia no codigo
+A memoria e o que mantem continuidade entre sessoes. Sem ela, cada tarefa comeca do zero e voce perde contexto.
+
+### O que salvar (SEMPRE, ao final de cada tarefa)
+
+- **Progresso de tarefas**: o que foi feito, o que falta, onde parou
+- **URLs e paths**: links de sites, repos, docs que estao sendo trabalhados
+- **Credenciais de servico**: endpoints, contas (NAO senhas)
+- **Decisoes tecnicas**: stack escolhida, patterns adotados, problemas encontrados
+- **Resultados de analise**: resumo do que descobriu sobre um projeto/site
+- **Google Docs criados**: titulo + link de cada doc
+
+### Como usar
+
+1. **Consulte `memory/` ANTES de comecar qualquer tarefa** — pode ja ter contexto de sessoes anteriores
+2. **Salve DURANTE a tarefa** — nao espere o final, salve progresso parcial
+3. **Organize por tema**: `memory/cbschool.md`, `memory/tangocash.md`, `memory/infraestrutura.md`
+4. **Atualize** arquivos existentes em vez de criar novos duplicados
