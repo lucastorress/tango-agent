@@ -1,4 +1,4 @@
-.PHONY: build up up-proxy down logs status cli setup deploy update health harden security-check backup snapshot doctor restart sync-bootstrap
+.PHONY: build up up-proxy down logs status cli setup deploy update health harden security-check backup snapshot doctor restart sync-bootstrap bot-dev bot-build bot-up bot-down bot-logs bot-restart
 
 build:
 	docker compose build
@@ -59,3 +59,23 @@ snapshot:
 
 sync-bootstrap:
 	@bash scripts/sync-bootstrap.sh
+
+# === Tango Bot (Agent SDK) ===
+
+bot-dev:
+	cd bot && npx tsx src/index.ts
+
+bot-build:
+	cd bot && pnpm build
+
+bot-up:
+	docker compose --profile bot up -d tango-bot
+
+bot-down:
+	docker compose stop tango-bot
+
+bot-logs:
+	docker compose logs -f tango-bot
+
+bot-restart:
+	docker compose restart tango-bot

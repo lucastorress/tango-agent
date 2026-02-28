@@ -132,6 +132,50 @@ services:
     entrypoint: ["node", "dist/index.js"]
     profiles: ["cli"]
 
+  tango-bot:
+    build: ./bot
+    container_name: tango-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOME: /home/node
+      NODE_ENV: production
+      BOT_BOOTSTRAP_DIR: /home/node/bootstrap
+      BOT_DATA_DIR: /home/node/data
+      BOT_CWD: /home/node/workspace
+      GIT_AUTHOR_NAME: ${GIT_USER_NAME:-Tango Dev Agent}
+      GIT_AUTHOR_EMAIL: ${GIT_USER_EMAIL:-dev@tango-agent.local}
+      GIT_COMMITTER_NAME: ${GIT_USER_NAME:-Tango Dev Agent}
+      GIT_COMMITTER_EMAIL: ${GIT_USER_EMAIL:-dev@tango-agent.local}
+      GIT_TOKEN: ${GIT_TOKEN:-}
+    volumes:
+      - ./config/bootstrap:/home/node/bootstrap:ro
+      - ./data/workspace:/home/node/workspace
+      - ./data/workspace-atlas:/home/node/workspace-atlas
+      - ./data/workspace-pixel:/home/node/workspace-pixel
+      - ./data/workspace-hawk:/home/node/workspace-hawk
+      - ./data/workspace-sentinel:/home/node/workspace-sentinel
+      - ${PROJECTS_DIR:-./projects}:/home/node/projects
+      - ./config/gitconfig:/home/node/.gitconfig:ro
+      - bot_claude_data:/home/node/.claude
+      - ./data/bot:/home/node/data
+    networks:
+      - tango-net
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    profiles: ["bot"]
+
 volumes:
   caddy_data:
   caddy_config:
+  bot_claude_data:
