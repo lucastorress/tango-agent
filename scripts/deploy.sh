@@ -24,6 +24,13 @@ if [ ! -f "${OPENCLAW_CONFIG_DIR:-./data/config}/openclaw.json" ]; then
     exit 1
 fi
 
+# Validar diretorio de projetos
+PROJ_DIR="${PROJECTS_DIR:-./projects}"
+if [ ! -d "$PROJ_DIR" ]; then
+    echo "Criando diretorio de projetos: $PROJ_DIR"
+    mkdir -p "$PROJ_DIR"
+fi
+
 # Build (se falhar, nao derruba o gateway atual)
 echo "Building..."
 docker compose build

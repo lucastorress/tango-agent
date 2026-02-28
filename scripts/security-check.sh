@@ -116,6 +116,36 @@ else
     warn "openclaw.json nao encontrado em $CONFIG_DIR (sera criado no primeiro boot)"
 fi
 
+# --- Projetos ---
+echo ""
+echo ">> Projetos"
+PROJ_DIR="${PROJECTS_DIR:-./projects}"
+if [ -d "$PROJ_DIR" ]; then
+    PROJ_OWNER=$(stat -c "%u" "$PROJ_DIR" 2>/dev/null || stat -f "%u" "$PROJ_DIR" 2>/dev/null)
+    if [ "$PROJ_OWNER" = "1000" ]; then
+        pass "Diretorio de projetos com owner correto (uid 1000)"
+    else
+        warn "Diretorio de projetos com owner $PROJ_OWNER (esperado: 1000)"
+    fi
+else
+    warn "Diretorio de projetos nao existe ($PROJ_DIR)"
+fi
+
+# --- Docker Security ---
+echo ""
+echo ">> Docker Security"
+if docker inspect tango-gateway --format='{{.HostConfig.SecurityOpt}}' 2>/dev/null | grep -q "no-new-privileges"; then
+    pass "Container com no-new-privileges"
+else
+    warn "Container sem no-new-privileges"
+fi
+
+if docker inspect tango-gateway --format='{{.HostConfig.CapDrop}}' 2>/dev/null | grep -q "ALL"; then
+    pass "Container com cap_drop ALL"
+else
+    warn "Container sem cap_drop ALL"
+fi
+
 # --- Portas abertas ---
 echo ""
 echo ">> Rede"

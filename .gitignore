@@ -4,6 +4,7 @@
 config/openclaw.json
 data/
 backups/
+projects/
 
 # Docker
 docker-compose.override.yml

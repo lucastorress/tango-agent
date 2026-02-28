@@ -54,8 +54,16 @@ DEPLOY_USER="deploy"
 if id "$DEPLOY_USER" &>/dev/null; then
     warn "Usuario '$DEPLOY_USER' ja existe."
 else
-    useradd -m -s /bin/bash -G sudo,docker "$DEPLOY_USER" 2>/dev/null || \
-    useradd -m -s /bin/bash -G sudo "$DEPLOY_USER"
+    # Criar com uid 1000 (mesmo do container node) para match de permissoes
+    if id -u 1000 &>/dev/null; then
+        warn "uid 1000 ja em uso por $(id -nu 1000). Criando $DEPLOY_USER com uid automatico."
+        warn "Ajuste permissoes depois: sudo chown -R \$(id -u $DEPLOY_USER):1000 data/"
+        useradd -m -s /bin/bash -G sudo,docker "$DEPLOY_USER" 2>/dev/null || \
+        useradd -m -s /bin/bash -G sudo "$DEPLOY_USER"
+    else
+        useradd -m -u 1000 -s /bin/bash -G sudo,docker "$DEPLOY_USER" 2>/dev/null || \
+        useradd -m -u 1000 -s /bin/bash -G sudo "$DEPLOY_USER"
+    fi
     log "Usuario '$DEPLOY_USER' criado."
 fi
 

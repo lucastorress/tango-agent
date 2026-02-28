@@ -1,0 +1,14 @@
+[safe]
+    directory = *
+
+[credential "https://github.com"]
+    helper = "!f() { echo username=git; echo password=$GIT_TOKEN; }; f"
+
+[init]
+    defaultBranch = main
+
+[core]
+    autocrlf = input
+
+[pull]
+    rebase = true
