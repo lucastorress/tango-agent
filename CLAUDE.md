@@ -32,6 +32,7 @@ This is a **bootstrap/infrastructure repo**, not an application codebase. It wra
 | `tango-gateway` | _(always)_ | OpenClaw gateway, port 18789 on 127.0.0.1, memory limit 4G |
 | `tango-caddy` | `proxy` | Caddy reverse proxy with auto-HTTPS (requires `DOMAIN` in .env) |
 | `tango-cli` | `cli` | Interactive OpenClaw CLI, on-demand |
+| `tango-bot` | `bot` | Telegram bot via Claude Agent SDK, memory limit 2G |
 
 ### Multi-agent architecture
 
@@ -89,6 +90,19 @@ Memory persistence: each agent has a `memory/` directory in its workspace. Cron 
 - User can switch via `/model sonnet` or `/model haiku` in Telegram
 - Single `ANTHROPIC_API_KEY` serves both models
 
+### Tango Bot (Agent SDK)
+
+Alternative to OpenClaw gateway — a standalone Telegram bot using `@anthropic-ai/claude-agent-sdk` (the Claude Code engine as a library). Lives in `bot/`.
+
+- Grammy long polling (no webhook needed)
+- Same auth: `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`
+- Same workspaces, bootstrap files, and projects mount as OpenClaw
+- Tango (main, Haiku) delegates to subagents via `Task` tool: atlas (Haiku), pixel (Sonnet), hawk (Sonnet), sentinel (Sonnet)
+- Session persistence: `data/bot/sessions.json`
+- **Cannot run simultaneously with OpenClaw gateway** if they share the same `TELEGRAM_BOT_TOKEN`
+
+Source: `bot/src/` (6 files: config, bot, agent, session, streamer, index)
+
 ## Common commands
 
 ```bash
@@ -108,6 +122,14 @@ make snapshot       # Local backup + Hetzner API snapshot (keeps last 5)
 make security-check # Audit VPS security posture
 make up-proxy       # Start gateway + Caddy (requires DOMAIN in .env)
 make sync-bootstrap # Sync bootstrap templates → workspaces (overwrites, preserves memory/)
+
+# Tango Bot (Agent SDK)
+make bot-dev        # Run bot locally with tsx (dev)
+make bot-build      # Compile TypeScript
+make bot-up         # Start bot container (profile: bot)
+make bot-down       # Stop bot container
+make bot-logs       # Tail bot logs
+make bot-restart    # Restart bot container
 ```
 
 ## Key files
@@ -124,6 +146,8 @@ make sync-bootstrap # Sync bootstrap templates → workspaces (overwrites, prese
 | `scripts/sync-bootstrap.sh` | Copies bootstrap templates to workspaces (overwrites). Never touches `memory/` or `MEMORY.md` |
 | `config/bootstrap/` | Bootstrap templates for all 5 agents (IDENTITY.md, SOUL.md, AGENTS.md, etc.) |
 | `config/gitconfig` | Git config estático para o container (credential helper, safe.directory) |
+| `bot/src/` | Tango Bot source (6 TypeScript files: config, bot, agent, session, streamer, index) |
+| `bot/Dockerfile` | Bot container image (node:22-bookworm-slim + git, curl, jq, ripgrep) |
 
 ## Working with the submodule
 
@@ -158,6 +182,7 @@ The submodule has two remotes: `origin` (Lucas's fork) and `upstream` (openclaw/
 - **Bun is experimental**: Not production-ready for gateway (WhatsApp/Telegram bugs). Always use Node.
 - **CPU spike on startup**: OpenClaw loads all channel SDKs regardless of config. Expected behavior, not a bug in our setup.
 - **Single-operator trust model**: One trusted operator per gateway. Not designed for multi-tenant.
+- **Bot token conflict**: OpenClaw gateway and tango-bot cannot share the same `TELEGRAM_BOT_TOKEN` simultaneously (Telegram only allows one connection per token). Use one or the other, or create a separate bot token.
 
 ## Script compatibility
 

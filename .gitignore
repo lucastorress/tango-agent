@@ -2,12 +2,17 @@
 .env
 .env.infra
 config/openclaw.json
+client_secret_*.json
 data/
 backups/
 projects/
 
 # Docker
 docker-compose.override.yml
+
+# Bot
+bot/node_modules/
+bot/dist/
 
 # OS
 .DS_Store
