@@ -2,7 +2,12 @@
     directory = *
 
 [credential "https://github.com"]
-    helper = "!f() { echo username=git; echo password=$GIT_TOKEN; }; f"
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
 
 [init]
     defaultBranch = main
