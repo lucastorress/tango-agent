@@ -56,13 +56,17 @@
         "anthropic/claude-haiku-4-5": {
           "alias": "haiku",
           "params": { "cacheRetention": "short" }
-        }
+        },
+        "openrouter/minimax/minimax-m2.5": { "alias": "m25" },
+        "openrouter/moonshotai/kimi-k2.5": { "alias": "kimi" },
+        "openrouter/google/gemini-2.5-flash-lite": { "alias": "flash-lite" },
+        "openrouter/google/gemini-2.5-flash": { "alias": "flash" }
       },
-      "contextTokens": 100000,
+      "contextTokens": 32000,
       "thinkingDefault": "low",
       "timeoutSeconds": 120,
       "compaction": {
-        "enabled": true,
+        "mode": "safeguard",
         "reserveTokens": 16384,
         "memoryFlush": { "enabled": true }
       },
@@ -76,7 +80,10 @@
       },
       "subagents": {
         "maxSpawnDepth": 1,
-        "maxConcurrent": 2
+        "maxConcurrent": 2,
+        "maxChildrenPerAgent": 3,
+        "archiveAfterMinutes": 30,
+        "model": "openrouter/google/gemini-2.5-flash"
       }
     },
     "list": [
@@ -93,45 +100,45 @@
           "deny": ["gateway", "group:runtime"],
           "exec": { "security": "deny" }
         },
-        "skills": ["weather", "gog"],
+        "skills": ["weather"],
         "subagents": {
           "allowAgents": ["atlas", "pixel", "hawk", "sentinel"]
         },
         "heartbeat": {
-          "every": "30m",
+          "every": "1h",
+          "model": "openrouter/google/gemini-2.5-flash-lite",
           "activeHours": { "start": "08:00", "end": "24:00" }
         }
       },
       {
         "id": "atlas",
         "model": {
-          "primary": "anthropic/claude-haiku-4-5",
-          "fallbacks": ["anthropic/claude-sonnet-4-6"]
+          "primary": "openrouter/moonshotai/kimi-k2.5",
+          "fallbacks": ["anthropic/claude-haiku-4-5"]
         },
         "tools": {
           "profile": "messaging",
           "alsoAllow": ["group:memory", "group:web", "image"],
-          "deny": ["gateway", "group:runtime"],
-          "exec": { "security": "deny" }
+          "deny": ["gateway"]
         },
-        "skills": ["summarize", "gog"],
+        "skills": ["summarize"],
         "workspace": "workspace-atlas"
       },
       {
         "id": "pixel",
         "model": {
-          "primary": "anthropic/claude-sonnet-4-6",
-          "fallbacks": ["anthropic/claude-haiku-4-5"]
+          "primary": "openrouter/minimax/minimax-m2.5",
+          "fallbacks": ["anthropic/claude-sonnet-4-6"]
         },
         "tools": { "profile": "coding" },
-        "skills": ["github", "gh-issues"],
+        "skills": ["github", "gh-issues", "gog"],
         "workspace": "workspace-pixel"
       },
       {
         "id": "hawk",
         "model": {
-          "primary": "anthropic/claude-sonnet-4-6",
-          "fallbacks": ["anthropic/claude-haiku-4-5"]
+          "primary": "openrouter/minimax/minimax-m2.5",
+          "fallbacks": ["anthropic/claude-sonnet-4-6"]
         },
         "tools": { "profile": "coding" },
         "skills": ["github", "gh-issues", "session-logs"],
@@ -140,8 +147,8 @@
       {
         "id": "sentinel",
         "model": {
-          "primary": "anthropic/claude-sonnet-4-6",
-          "fallbacks": ["anthropic/claude-haiku-4-5"]
+          "primary": "openrouter/minimax/minimax-m2.5",
+          "fallbacks": ["anthropic/claude-sonnet-4-6"]
         },
         "tools": { "profile": "coding" },
         "skills": ["healthcheck", "session-logs"],

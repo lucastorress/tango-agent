@@ -30,7 +30,7 @@ Perfil **coding** completo — inclui todas as ferramentas de desenvolvimento:
 - **subagents, session_status**: gerenciamento de subagentes
 - **cron**: tarefas agendadas
 - **image**: processar imagens
-- **Skills**: `github`, `gh-issues` (requerem `gh` CLI no container)
+- **Skills**: `github`, `gh-issues` (requerem `gh` CLI no VPS), `gog` (Google Workspace — Gmail, Calendar, Drive)
 
 ## Ferramentas NEGADAS
 
