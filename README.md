@@ -49,6 +49,7 @@ make logs
 | `make update`         | Atualiza OpenClaw do upstream e rebuilda        |
 | `make doctor`         | Roda diagnostico do OpenClaw                    |
 | `make restart`        | Restart do gateway (mitiga memory leak)          |
+| `make sync-bootstrap` | Sincroniza templates bootstrap → workspaces      |
 | `make security-check` | Verifica seguranca do deploy                    |
 | `make backup`         | Backup local do data/ (tar.gz)                  |
 | `make snapshot`       | Backup local + snapshot Hetzner                 |
@@ -100,6 +101,10 @@ git add tango-openclaw && git commit -m "chore: update openclaw submodule"
 | `OPENCLAW_WORKSPACE_DIR`  | `./data/workspace`       | Diretorio de trabalho do agente    |
 | `OPENCLAW_GATEWAY_BIND`   | `lan`                    | Modo de bind (`loopback` ou `lan`) |
 | `OPENCLAW_IMAGE`          | `tango-openclaw:latest`  | Nome da imagem Docker              |
+| `PROJECTS_DIR`            | `./projects`             | Diretorio de projetos git (montado no container) |
+| `GIT_USER_NAME`           | `Tango Dev Agent`        | Nome para commits do agente                      |
+| `GIT_USER_EMAIL`          | `dev@tango-agent.local`  | Email para commits do agente                     |
+| `GIT_TOKEN`               | _(vazio)_                | GitHub PAT para push via HTTPS                   |
 
 ### Credenciais de infraestrutura (.env.infra)
 
@@ -128,38 +133,42 @@ Os scripts de backup pedem o token em runtime se `.env.infra` nao existir.
 
 ## Agentes
 
-O Tango Agent usa uma arquitetura **multi-agent** com dois agentes pre-configurados:
+O Tango Agent usa uma arquitetura **multi-agent** com cinco agentes especializados:
 
-### tango (principal)
+| Agente | Emoji | Papel | Perfil | Skills |
+|--------|-------|-------|--------|--------|
+| **tango** (principal) | 🥭 | Assistente pessoal, ponto de contato no Telegram | `messaging` | `weather` |
+| **atlas** | 📋 | Estrategista e pesquisador | `messaging` | `summarize` |
+| **pixel** | 💻 | Desenvolvedor e construtor | `coding` | `github`, `gh-issues` |
+| **hawk** | 🔍 | Guardiao de qualidade e revisao | `coding` | `github`, `gh-issues`, `session-logs` |
+| **sentinel** | 🛡️ | Seguranca e operacoes | `coding` | `healthcheck`, `session-logs` |
 
-Assistente pessoal que conversa pelo Telegram. Lida com conversas, lembretes, pesquisa e memoria.
+### Comunicacao entre agentes
 
-- **Perfil**: `messaging` + `memory` + `web`
-- **Seguranca**: sem acesso a arquivos, exec ou automacao
-- **Heartbeat**: a cada 30 min (8h-24h) — verifica lembretes e tarefas pendentes
-- **Delegacao**: tarefas tecnicas sao delegadas ao agente **dev** via agent-to-agent
+Todos os agentes se comunicam via `agentToAgent` usando tags padronizadas:
 
-### dev (desenvolvimento)
+- `[TASK]` — Delegar uma tarefa
+- `[REPORT]` — Reportar resultado
+- `[QUESTION]` — Tirar duvida
+- `[INFO]` — Informar sem exigir acao
 
-Agente tecnico com acesso a arquivos, git, GitHub e execucao de comandos. Nao fala diretamente pelo Telegram.
-
-- **Perfil**: `coding` + `fs` + `runtime` + `exec`
-- **Workspace**: isolado em `data/workspace-dev/`
-- **Comunicacao**: recebe tarefas do tango e devolve resultados
+Apenas o **tango** pode spawnar subagents (`sessions_spawn`). Max 5 turnos de ping-pong por conversa agent-to-agent.
 
 ### Bootstrap files
 
-Cada agente tem arquivos de bootstrap no seu workspace que definem persona e instrucoes:
+Templates ficam em `config/bootstrap/{agente}/` e sao copiados para os workspaces:
 
-| Arquivo | tango | dev | Descricao |
-|---------|-------|-----|-----------|
-| `IDENTITY.md` | sim | sim | Nome e emoji do agente |
-| `SOUL.md` | sim | - | Persona e tom de comunicacao |
-| `USER.md` | sim | - | Info do usuario (Lucas) |
-| `AGENTS.md` | sim | sim | Instrucoes de comportamento |
-| `HEARTBEAT.md` | sim | - | Checklist do heartbeat |
+| Arquivo | tango | atlas | pixel | hawk | sentinel | Descricao |
+|---------|-------|-------|-------|------|----------|-----------|
+| `IDENTITY.md` | x | x | x | x | x | Nome e emoji |
+| `SOUL.md` | x | x | x | x | x | Base compartilhada + personalidade unica |
+| `USER.md` | x | | | | | Info do usuario (Lucas) |
+| `AGENTS.md` | x | x | x | x | x | Regras gerais + manual operacional |
+| `HEARTBEAT.md` | x | | | | | Checklist do heartbeat + sugestoes de cron |
+| `TOOLS.md` | | | x | x | x | Guidelines de ferramentas por papel |
 
-Esses arquivos sao gerados automaticamente pelo `make setup` (somente se nao existirem).
+- `make setup` copia templates somente se o arquivo nao existir no workspace
+- `make sync-bootstrap` sobrescreve todos (exceto `memory/` e `MEMORY.md`)
 
 ### Memoria persistente
 
@@ -167,7 +176,7 @@ Cada agente tem um diretorio `memory/` no seu workspace para guardar informacoes
 
 ### Cron
 
-Cron habilitado globalmente para tarefas agendadas. O agente tango pode criar e gerenciar tarefas cron via Telegram.
+Cron habilitado globalmente para tarefas agendadas. O agente tango pode criar e gerenciar tarefas cron via Telegram. Sugestoes de cron (briefing matinal, resumo noturno) documentadas no `HEARTBEAT.md`.
 
 ## Config do OpenClaw (openclaw.json)
 
@@ -181,9 +190,9 @@ O arquivo `config/openclaw.example.json` e o template. O `make setup` copia auto
 | `identity` | Nome, tema, emoji | Personalidade do Tango |
 | `session` | `dmScope: per-channel-peer` | Sessoes separadas por contato |
 | `channels.telegram` | `dmPolicy: allowlist` | So responde ao seu Telegram User ID |
-| `agents` | Sonnet 4.6 + fallback Haiku 4.5 | `/model sonnet` ou `/model haiku` no Telegram |
-| `agents.list` | tango (messaging) + dev (coding) | Multi-agent com agent-to-agent |
-| `tools` | agentToAgent habilitado | tango delega tarefas ao dev |
+| `agents` | Haiku 4.5 (default) + Sonnet 4.6 (coding) | `/model sonnet` ou `/model haiku` no Telegram |
+| `agents.list` | 5 agentes: tango, atlas, pixel, hawk, sentinel | Multi-agent com agent-to-agent |
+| `tools` | agentToAgent habilitado | Todos os agentes se comunicam entre si |
 | `cron` | enabled | Tarefas agendadas |
 | `logging` | `redactSensitive: tools` | Redacta dados sensiveis nos logs |
 
@@ -328,9 +337,10 @@ O `openclaw.json` armazena chaves sem criptografia. Nao ha secrets manager nativ
 ~20% dos skills no ClawHub sao maliciosos (malware, stealers, reverse shells).
 
 **Mitigacoes no Tango Agent**:
-- `tools.deny: ["group:automation", "group:runtime"]` — bloqueia exec e automacao
+- Messaging agents: `deny: ["gateway", "group:runtime"]` — bloqueia gateway e runtime
+- Coding agents: perfil `coding` completo sem allow/deny extras
 - `tools.elevated.enabled: false` — sem ferramentas privilegiadas
-- `tools.profile: "messaging"` — apenas ferramentas de mensagem
+- `tools.loopDetection` habilitado — previne loops de ferramentas
 
 ### Modelo de confianca single-operator
 
@@ -358,24 +368,27 @@ tango-agent/
 ├── scripts/
 │   ├── setup.sh                # Setup inicial (local + VPS)
 │   ├── deploy.sh               # Deploy com validacao
+│   ├── sync-bootstrap.sh       # Sincroniza templates → workspaces
 │   ├── backup.sh               # Backup local + snapshot Hetzner
 │   ├── harden-vps.sh           # Hardening de seguranca do VPS
 │   └── security-check.sh       # Auditoria de seguranca
 ├── config/
 │   ├── openclaw.example.json   # Template de config OpenClaw
-│   └── Caddyfile               # Config do reverse proxy
+│   ├── Caddyfile               # Config do reverse proxy
+│   ├── gitconfig               # Git config para o container (credential helper)
+│   └── bootstrap/              # Templates de bootstrap dos agentes
+│       ├── tango/              # IDENTITY, SOUL, USER, AGENTS, HEARTBEAT
+│       ├── atlas/              # IDENTITY, SOUL, AGENTS
+│       ├── pixel/              # IDENTITY, SOUL, AGENTS, TOOLS
+│       ├── hawk/               # IDENTITY, SOUL, AGENTS, TOOLS
+│       └── sentinel/           # IDENTITY, SOUL, AGENTS, TOOLS
 ├── data/                       # (gerado pelo setup, no .gitignore)
 │   ├── config/                 # openclaw.json + identity/
-│   ├── workspace/              # Workspace do agente tango
-│   │   ├── memory/             # Memoria persistente
-│   │   ├── IDENTITY.md         # Bootstrap: nome e emoji
-│   │   ├── SOUL.md             # Bootstrap: persona
-│   │   ├── USER.md             # Bootstrap: info do usuario
-│   │   ├── AGENTS.md           # Bootstrap: instrucoes
-│   │   └── HEARTBEAT.md        # Bootstrap: checklist heartbeat
-│   └── workspace-dev/          # Workspace do agente dev
-│       ├── memory/             # Memoria persistente
-│       ├── IDENTITY.md         # Bootstrap: nome e emoji
-│       └── AGENTS.md           # Bootstrap: instrucoes
+│   ├── workspace/              # Workspace do Tango
+│   ├── workspace-atlas/        # Workspace do Atlas
+│   ├── workspace-pixel/        # Workspace do Pixel
+│   ├── workspace-hawk/         # Workspace do Hawk
+│   └── workspace-sentinel/     # Workspace do Sentinel
+├── projects/               # (gitignored) Projetos git montados no container
 └── tango-openclaw/             # [submodule] OpenClaw
 ```

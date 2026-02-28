@@ -23,6 +23,7 @@ This is a **bootstrap/infrastructure repo**, not an application codebase. It wra
 | `.env` | Yes (`env_file`) | API keys, tokens, OpenClaw env vars |
 | `.env.infra` | **Never** | Hetzner API token — host-side scripts only |
 | `data/config/openclaw.json` | Yes (volume) | OpenClaw runtime config (generated from `config/openclaw.example.json`) |
+| `GIT_TOKEN` | Yes (`environment`) | GitHub PAT para git push via HTTPS (agentes coding) |
 
 ### Docker services (tango-net bridge network)
 
@@ -34,19 +35,52 @@ This is a **bootstrap/infrastructure repo**, not an application codebase. It wra
 
 ### Multi-agent architecture
 
-Two pre-configured agents with distinct roles and permissions:
+Five agents with distinct roles, personalities, and permissions:
 
-| Agent | Role | Tools | Heartbeat | Workspace |
-|-------|------|-------|-----------|-----------|
-| `tango` (default) | Personal assistant via Telegram | `messaging` + `memory` + `web` | 30min (8h-24h) | `data/workspace/` |
-| `dev` | Coding/development agent | `coding` + `fs` + `runtime` + `exec` | disabled | `data/workspace-dev/` |
+| Agent (id) | Name | Emoji | Profile | Extras (alsoAllow) | Skills | Heartbeat | Workspace |
+|------------|------|-------|---------|-------------------|--------|-----------|-----------|
+| `tango` (default) | Tango | 🥭 | `messaging` | `memory`, `web`, `sessions_spawn`, `cron`, `agents_list`, `image` | `weather` | 30min (8h-24h) | `data/workspace/` |
+| `atlas` | Atlas | 📋 | `messaging` | `memory`, `web`, `image` | `summarize` | — | `data/workspace-atlas/` |
+| `pixel` | Pixel | 💻 | `coding` | _(profile completo, sem extras)_ | `github`, `gh-issues` | — | `data/workspace-pixel/` |
+| `hawk` | Hawk | 🔍 | `coding` | _(profile completo, sem extras)_ | `github`, `gh-issues`, `session-logs` | — | `data/workspace-hawk/` |
+| `sentinel` | Sentinel | 🛡️ | `coding` | _(profile completo, sem extras)_ | `healthcheck`, `session-logs` | — | `data/workspace-sentinel/` |
 
-- **tango** handles conversations, reminders, research. Delegates technical tasks to **dev** via agent-to-agent.
-- **dev** has file/git/exec access but never speaks directly on Telegram. Only responds to tango.
-- Agent-to-agent communication enabled between both agents.
-- Bootstrap files (IDENTITY.md, SOUL.md, etc.) in each workspace define agent persona and instructions.
-- Memory persistence: each agent has a `memory/` directory in its workspace.
-- Cron enabled globally for scheduled tasks.
+- **Tango** 🥭: Right-hand assistant. Talks to Lucas via Telegram. Delegates to others. Only agent with heartbeat and `sessions_spawn`.
+- **Atlas** 📋: Strategic thinker. Research, specs, analysis. Data before opinions.
+- **Pixel** 💻: Builder. Code, implement, ship. No chit-chat.
+- **Hawk** 🔍: Quality guardian. Code review, testing, architecture validation. Always suggests fixes.
+- **Sentinel** 🛡️: Security watchdog. Audits, checklists, deploy validation. Prevents before fixing.
+
+All agents can communicate with each other via `agentToAgent`. Only Tango can spawn subagents. Max 5 ping-pong turns per agent-to-agent conversation.
+
+Agent-to-agent communication uses standardized tags: `[TASK]`, `[REPORT]`, `[QUESTION]`, `[INFO]`.
+
+### Projects mount (agentes coding)
+
+| Localização | Caminho |
+|-------------|---------|
+| Host (VPS) | `/home/deploy/projects/` ou `PROJECTS_DIR` do `.env` |
+| Host (macOS) | `./projects/` (default) |
+| Container | `/home/node/projects/` |
+
+- Acessível por `pixel`, `hawk` e `sentinel` (perfil `coding` com `exec`)
+- Git push usa HTTPS com `GIT_TOKEN` (GitHub PAT no `.env`)
+- SSH agent forwarding desabilitado no VPS (segurança)
+
+### Bootstrap structure
+
+Templates live in `config/bootstrap/{agent}/` and are copied to workspaces by `make setup` (only if missing) or `make sync-bootstrap` (overwrites, preserves `memory/`).
+
+| File | tango | atlas | pixel | hawk | sentinel | Purpose |
+|------|-------|-------|-------|------|----------|---------|
+| `IDENTITY.md` | x | x | x | x | x | Name + emoji (2-3 lines) |
+| `SOUL.md` | x | x | x | x | x | Shared base + unique personality |
+| `USER.md` | x | | | | | Info about Lucas |
+| `AGENTS.md` | x | x | x | x | x | General rules + operational manual |
+| `HEARTBEAT.md` | x | | | | | Heartbeat checklist + cron suggestions |
+| `TOOLS.md` | | | x | x | x | Tool guidelines specific to role |
+
+Memory persistence: each agent has a `memory/` directory in its workspace. Cron enabled globally.
 
 ### LLM configuration
 
@@ -73,6 +107,7 @@ make backup         # Local tar.gz backup of data/ (keeps last 7)
 make snapshot       # Local backup + Hetzner API snapshot (keeps last 5)
 make security-check # Audit VPS security posture
 make up-proxy       # Start gateway + Caddy (requires DOMAIN in .env)
+make sync-bootstrap # Sync bootstrap templates → workspaces (overwrites, preserves memory/)
 ```
 
 ## Key files
@@ -86,6 +121,9 @@ make up-proxy       # Start gateway + Caddy (requires DOMAIN in .env)
 | `scripts/harden-vps.sh` | One-shot VPS hardening: SSH key-only, no root login, UFW (SSH+80+443), fail2ban, unattended-upgrades, creates `deploy` user |
 | `scripts/security-check.sh` | Audits SSH, firewall, fail2ban, .env permissions, exposed ports, Docker state |
 | `scripts/backup.sh` | Local tar.gz + optional Hetzner snapshot via API (reads `.env.infra` or prompts at runtime) |
+| `scripts/sync-bootstrap.sh` | Copies bootstrap templates to workspaces (overwrites). Never touches `memory/` or `MEMORY.md` |
+| `config/bootstrap/` | Bootstrap templates for all 5 agents (IDENTITY.md, SOUL.md, AGENTS.md, etc.) |
+| `config/gitconfig` | Git config estático para o container (credential helper, safe.directory) |
 
 ## Working with the submodule
 
@@ -103,16 +141,19 @@ The submodule has two remotes: `origin` (Lucas's fork) and `upstream` (openclaw/
 - Gateway binds to `127.0.0.1` only — access via SSH tunnel or Caddy reverse proxy
 - Telegram allowlist (`dmPolicy: allowlist`) — only responds to the configured `TELEGRAM_USER_ID`
 - Groups disabled (`groupPolicy: disabled`)
-- Agent `tango`: `messaging` profile + `memory` + `web`; `exec` denied; `elevated` disabled
-- Agent `dev`: `coding` profile + `fs` + `runtime` + `exec`; isolated workspace; no direct Telegram access
+- Agent `tango`: `messaging` profile + `alsoAllow` (memory, web, sessions_spawn, cron, agents_list, image); `exec` denied; `elevated` disabled
+- Agent `atlas`: `messaging` profile + `alsoAllow` (memory, web, image); `exec` denied; no heartbeat
+- Agents `pixel`, `hawk`, `sentinel`: `coding` profile (full — all 16 tools included); isolated workspaces; no direct Telegram access
 - Container runs as non-root user `node` (uid 1000); `data/` must be owned by 1000:1000 on VPS
 - `.env` and `openclaw.json` are chmod 600 (set by setup.sh)
+- Container hardened: `cap_drop: ALL` + caps mínimas (`CHOWN`, `SETUID`, `SETGID`, `KILL`) + `no-new-privileges`
+- Projetos montados em `/home/node/projects/` — escopo limitado (nunca `/home` inteiro)
 
 ## Known OpenClaw issues to be aware of
 
 - **Memory leak**: Gateway grows from 1.8GB to 4-6GB over days. Memory limit is 4G in compose. Use `make restart` periodically.
 - **CVE-2026-25253** (CVSS 8.8): WebSocket hijacking → RCE. Fixed in v2026.1.29+. Our submodule is on a patched version.
-- **ClawHub supply chain**: ~20% of ClawHub skills are malicious. Never install external skills without auditing. Our config denies automation/runtime tool groups.
+- **ClawHub supply chain**: ~20% of ClawHub skills are malicious. Never install external skills without auditing. Messaging agents deny `gateway`; coding agents use full profile without extra allow/deny. `elevated` disabled globally.
 - **API keys in plain text**: OpenClaw stores keys unencrypted in `openclaw.json`. Mitigated with chmod 600.
 - **Bun is experimental**: Not production-ready for gateway (WhatsApp/Telegram bugs). Always use Node.
 - **CPU spike on startup**: OpenClaw loads all channel SDKs regardless of config. Expected behavior, not a bug in our setup.
