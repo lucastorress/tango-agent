@@ -1,58 +1,66 @@
-.PHONY: build up up-proxy down logs status cli setup deploy update health harden security-check backup snapshot doctor restart sync-bootstrap bot-dev bot-build bot-up bot-down bot-logs bot-restart
+.PHONY: build up down logs status cli setup deploy update health harden security-check backup snapshot doctor restart sync-bootstrap install-service logs-error logs-today mem bot-dev bot-build bot-up bot-down bot-logs bot-restart
 
+# === Build ===
 build:
-	@echo "Building base OpenClaw image..."
-	docker build -t tango-openclaw-base:latest \
-		--build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
-		./tango-openclaw
-	@echo "Building Tango image (with gog)..."
-	docker compose build tango-gateway
+	cd tango-openclaw && NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile && pnpm build
 
+# === Gateway (systemd) ===
 up:
-	docker compose up -d tango-gateway
-
-up-proxy:
-	docker compose --profile proxy up -d
+	sudo systemctl start tango-gateway
 
 down:
-	docker compose --profile proxy down
+	sudo systemctl stop tango-gateway
 
 restart:
-	docker compose restart tango-gateway
+	sudo systemctl restart tango-gateway
 
 logs:
-	docker compose logs -f tango-gateway
+	journalctl -u tango-gateway -f
 
 status:
-	docker compose exec tango-gateway node dist/index.js channels status --probe
+	systemctl status tango-gateway
 
 health:
-	docker compose exec tango-gateway node dist/index.js gateway health
+	cd tango-openclaw && node dist/index.js gateway health
 
 doctor:
-	docker compose exec tango-gateway node dist/index.js doctor
+	cd tango-openclaw && node dist/index.js doctor
 
 cli:
-	docker compose --profile cli run --rm tango-cli $(CMD)
+	cd tango-openclaw && node dist/index.js $(CMD)
 
+# === Setup/Deploy ===
 setup:
 	bash scripts/setup.sh
 
 deploy:
 	bash scripts/deploy.sh
 
+install-service:
+	sudo cp scripts/tango-gateway.service /etc/systemd/system/
+	sudo systemctl daemon-reload
+	sudo systemctl enable tango-gateway
+
 update:
 	@echo "Atualizando OpenClaw do upstream..."
 	cd tango-openclaw && git fetch upstream && git merge upstream/main --no-edit
 	@echo "Rebuilding..."
-	docker build -t tango-openclaw-base:latest \
-		--build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
-		./tango-openclaw
-	docker compose build tango-gateway
-	docker compose up -d tango-gateway
+	cd tango-openclaw && NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile && pnpm build
+	sudo systemctl restart tango-gateway
 	@echo "Commitar submodule atualizado:"
 	@echo "  git add tango-openclaw && git commit -m 'chore: update openclaw submodule'"
 
+# === Observabilidade ===
+logs-error:
+	journalctl -u tango-gateway -p err -f
+
+logs-today:
+	journalctl -u tango-gateway --since today
+
+mem:
+	systemctl status tango-gateway | grep Memory
+
+# === Seguranca/Backup ===
 harden:
 	@echo "Uso: ssh root@VPS_IP 'bash -s' < scripts/harden-vps.sh"
 

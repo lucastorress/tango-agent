@@ -32,32 +32,37 @@ if [ ! -d "$PROJ_DIR" ]; then
 fi
 
 # Build (se falhar, nao derruba o gateway atual)
-echo "Building base image..."
-docker build -t tango-openclaw-base:latest \
-    --build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
-    ./tango-openclaw
-echo "Building Tango image..."
-docker compose build tango-gateway
+echo "Building OpenClaw..."
+cd tango-openclaw
+NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
+pnpm build
+cd ..
 
-# Restart com minimo downtime
+# Reload service (caso o .service tenha mudado)
+sudo cp scripts/tango-gateway.service /etc/systemd/system/
+sudo systemctl daemon-reload
+
+# Restart
 echo "Restarting gateway..."
-docker compose up -d tango-gateway
+sudo systemctl restart tango-gateway
 
-# Aguardar container ficar healthy
+# Aguardar healthy
 echo "Aguardando gateway ficar healthy..."
 for i in $(seq 1 20); do
-    STATUS=$(docker inspect --format='{{.State.Health.Status}}' tango-gateway 2>/dev/null || echo "starting")
-    if [ "$STATUS" = "healthy" ]; then
+    if cd tango-openclaw && node dist/index.js gateway health 2>/dev/null; then
+        cd ..
         break
     fi
+    cd ..
     sleep 3
 done
 
 # Rodar diagnostico
 echo ""
 echo "Rodando diagnostico..."
-docker compose exec -T tango-gateway node dist/index.js doctor 2>&1 | tail -20 || true
+cd tango-openclaw && node dist/index.js doctor 2>&1 | tail -20 || true
+cd ..
 
 echo ""
 echo "=== Deploy completo! ==="
-docker compose ps
+systemctl status tango-gateway --no-pager

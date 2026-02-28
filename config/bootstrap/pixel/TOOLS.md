@@ -30,8 +30,8 @@
 
 ## Projetos Git
 
-- Projetos do host montados em `/home/node/projects/`
-- Para clonar: `cd /home/node/projects && git clone https://github.com/user/repo.git`
+- Projetos do host montados em `/home/deploy/projects/`
+- Para clonar: `cd /home/deploy/projects && git clone https://github.com/user/repo.git`
 - Push usa HTTPS com token (GIT_TOKEN). Nao precisa de SSH.
 - Seu workspace (`workspace-pixel/`) e para arquivos proprios, notas, scripts temporarios
-- Projetos ficam em `/home/node/projects/`, NAO no workspace
+- Projetos ficam em `/home/deploy/projects/`, NAO no workspace

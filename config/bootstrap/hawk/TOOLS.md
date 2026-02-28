@@ -36,6 +36,6 @@
 
 ## Projetos Git
 
-- Projetos do host montados em `/home/node/projects/`
-- Para revisao de codigo: acesse repos em `/home/node/projects/`
+- Projetos do host montados em `/home/deploy/projects/`
+- Para revisao de codigo: acesse repos em `/home/deploy/projects/`
 - Push usa HTTPS com token (GIT_TOKEN). Nao precisa de SSH.

@@ -66,19 +66,13 @@ else
     fail "Fail2ban nao esta ativo"
 fi
 
-# --- Docker ---
+# --- Gateway (systemd) ---
 echo ""
-echo ">> Docker"
-if command -v docker &>/dev/null; then
-    pass "Docker instalado"
+echo ">> Gateway"
+if systemctl is-active tango-gateway &>/dev/null; then
+    pass "Gateway ativo (systemd)"
 else
-    fail "Docker nao encontrado"
-fi
-
-if docker compose ps --format json 2>/dev/null | grep -q "tango-gateway"; then
-    pass "Container tango-gateway rodando"
-else
-    warn "Container tango-gateway nao esta rodando"
+    fail "Gateway nao esta rodando"
 fi
 
 # --- .env ---
@@ -120,30 +114,33 @@ fi
 echo ""
 echo ">> Projetos"
 PROJ_DIR="${PROJECTS_DIR:-./projects}"
+DEPLOY_UID=$(id -u deploy 2>/dev/null || echo "")
 if [ -d "$PROJ_DIR" ]; then
     PROJ_OWNER=$(stat -c "%u" "$PROJ_DIR" 2>/dev/null || stat -f "%u" "$PROJ_DIR" 2>/dev/null)
-    if [ "$PROJ_OWNER" = "1000" ]; then
-        pass "Diretorio de projetos com owner correto (uid 1000)"
+    if [ -n "$DEPLOY_UID" ] && [ "$PROJ_OWNER" = "$DEPLOY_UID" ]; then
+        pass "Diretorio de projetos com owner correto (deploy)"
+    elif [ "$PROJ_OWNER" = "$(id -u)" ]; then
+        pass "Diretorio de projetos com owner correto (usuario atual)"
     else
-        warn "Diretorio de projetos com owner $PROJ_OWNER (esperado: 1000)"
+        warn "Diretorio de projetos com owner $PROJ_OWNER (esperado: $(id -u))"
     fi
 else
     warn "Diretorio de projetos nao existe ($PROJ_DIR)"
 fi
 
-# --- Docker Security ---
+# --- Systemd Security ---
 echo ""
-echo ">> Docker Security"
-if docker inspect tango-gateway --format='{{.HostConfig.SecurityOpt}}' 2>/dev/null | grep -q "no-new-privileges"; then
-    pass "Container com no-new-privileges"
+echo ">> Systemd Security"
+if systemctl show tango-gateway --property=NoNewPrivileges --value 2>/dev/null | grep -q "yes"; then
+    pass "Gateway com NoNewPrivileges"
 else
-    warn "Container sem no-new-privileges"
+    warn "Gateway sem NoNewPrivileges"
 fi
 
-if docker inspect tango-gateway --format='{{.HostConfig.CapDrop}}' 2>/dev/null | grep -q "ALL"; then
-    pass "Container com cap_drop ALL"
+if systemctl show tango-gateway --property=ProtectSystem --value 2>/dev/null | grep -q "strict"; then
+    pass "Gateway com ProtectSystem=strict"
 else
-    warn "Container sem cap_drop ALL"
+    warn "Gateway sem ProtectSystem=strict"
 fi
 
 # --- Portas abertas ---

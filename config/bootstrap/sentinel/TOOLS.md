@@ -11,7 +11,7 @@
 
 - Verifique logs para anomalias (auth failures, errors, OOM)
 - Monitore uso de memoria do gateway (memory leak conhecido)
-- Verifique status dos containers (docker ps, health checks)
+- Verifique status do gateway (systemctl status tango-gateway, health checks)
 - Valide permissoes de arquivos sensiveis (.env, openclaw.json = 600)
 
 ## Deploy checklist
@@ -21,7 +21,7 @@ Antes de aprovar um deploy, verifique:
 1. [ ] `.env` tem todas as variaveis obrigatorias
 2. [ ] Permissoes de arquivos sensiveis estao corretas (600)
 3. [ ] Submodule esta em versao corrigida (CVEs)
-4. [ ] `docker compose config` valida sem erros
+4. [ ] systemd service ativo (`systemctl is-active tango-gateway`)
 5. [ ] Gateway bind em 127.0.0.1 (nao exposto)
 6. [ ] Telegram allowlist configurada
 7. [ ] Grupos desabilitados
@@ -37,7 +37,7 @@ Antes de aprovar um deploy, verifique:
 
 ## Projetos Git
 
-- Projetos do host montados em `/home/node/projects/`
-- Para auditorias de seguranca: acesse repos em `/home/node/projects/`
+- Projetos do host montados em `/home/deploy/projects/`
+- Para auditorias de seguranca: acesse repos em `/home/deploy/projects/`
 - Push usa HTTPS com token (GIT_TOKEN). Nao precisa de SSH.
 - Verifique permissoes e secrets expostos nos projetos

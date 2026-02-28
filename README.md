@@ -1,11 +1,12 @@
 # Tango Agent
 
-Agente pessoal de IA baseado no [OpenClaw](https://github.com/openclaw/openclaw), rodando exclusivamente em Docker.
+Agente pessoal de IA baseado no [OpenClaw](https://github.com/openclaw/openclaw), rodando bare metal via systemd.
 
 ## Pre-requisitos
 
-- [Docker](https://docs.docker.com/get-docker/) e Docker Compose
-- Git
+- Node.js 22+ (via NodeSource)
+- pnpm (via corepack)
+- Git, jq, ripgrep, curl
 
 ## Quick Start
 
@@ -14,7 +15,7 @@ Agente pessoal de IA baseado no [OpenClaw](https://github.com/openclaw/openclaw)
 git clone --recurse-submodules https://github.com/lucastorress/tango-agent.git
 cd tango-agent
 
-# Setup (cria .env, openclaw.json, diretorios, builda imagem)
+# Setup (cria .env, openclaw.json, diretorios, builda OpenClaw, instala systemd service)
 make setup
 
 # Editar .env com suas API keys
@@ -34,38 +35,40 @@ make logs
 
 ## Comandos (Makefile)
 
-| Comando               | Descricao                                      |
-|-----------------------|-------------------------------------------------|
-| `make build`          | Builda a imagem Docker (2-step: base + gog)     |
-| `make up`             | Sobe o gateway (acesso via SSH tunnel)          |
-| `make up-proxy`       | Sobe gateway + Caddy com HTTPS (requer dominio) |
-| `make down`           | Para todos os containers                        |
-| `make logs`           | Acompanha logs do gateway                       |
-| `make status`         | Verifica status dos canais                      |
-| `make health`         | Verifica saude do gateway                       |
-| `make cli`            | Abre o CLI do OpenClaw                          |
-| `make setup`          | Executa setup inicial                           |
-| `make deploy`         | Build + restart com validacao                   |
-| `make update`         | Atualiza OpenClaw do upstream e rebuilda        |
-| `make doctor`         | Roda diagnostico do OpenClaw                    |
+| Comando               | Descricao                                        |
+|-----------------------|--------------------------------------------------|
+| `make build`          | Builda o OpenClaw (pnpm install + build)         |
+| `make up`             | Inicia o gateway (systemctl start)               |
+| `make down`           | Para o gateway (systemctl stop)                  |
 | `make restart`        | Restart do gateway (mitiga memory leak)          |
+| `make logs`           | Acompanha logs (journalctl -f)                   |
+| `make logs-error`     | Filtra apenas erros                              |
+| `make logs-today`     | Logs do dia                                      |
+| `make status`         | Status do gateway (PID, uptime, memoria)         |
+| `make health`         | Verifica saude do gateway                        |
+| `make mem`            | Uso de memoria do processo                       |
+| `make doctor`         | Roda diagnostico do OpenClaw                     |
+| `make cli CMD="..."`  | Roda comando OpenClaw CLI                        |
+| `make setup`          | Executa setup inicial                            |
+| `make deploy`         | Build + restart com validacao                    |
+| `make update`         | Atualiza OpenClaw do upstream e rebuilda         |
+| `make install-service`| Instala/atualiza systemd unit                    |
 | `make sync-bootstrap` | Sincroniza templates bootstrap → workspaces      |
-| `make security-check` | Verifica seguranca do deploy                    |
-| `make backup`         | Backup local do data/ (tar.gz)                  |
-| `make snapshot`       | Backup local + snapshot Hetzner                 |
+| `make security-check` | Verifica seguranca do deploy                     |
+| `make backup`         | Backup local do data/ (tar.gz)                   |
+| `make snapshot`       | Backup local + snapshot Hetzner                  |
 
 ## Build e Deploy
 
-### Como funciona o build (2-step)
+### Como funciona o build
 
-O build usa duas etapas porque o `Dockerfile` da raiz estende a imagem base do OpenClaw:
+Build direto com pnpm no diretorio `tango-openclaw/`:
 
+```bash
+cd tango-openclaw && pnpm install --frozen-lockfile && pnpm build
 ```
-Step 1: docker build ./tango-openclaw → tango-openclaw-base:latest  (OpenClaw + apt packages)
-Step 2: docker compose build          → tango-openclaw:latest       (base + gog + socat)
-```
 
-`make build`, `make deploy`, `make setup` e `make update` executam os 2 steps automaticamente. **Nunca rode `docker compose build` direto** — a imagem base nao existira.
+`make build`, `make deploy`, `make setup` e `make update` executam o build automaticamente.
 
 ### Deploy local → VPS
 
@@ -86,13 +89,14 @@ make deploy
 
 | Mudanca | Comando | Motivo |
 |---------|---------|--------|
-| Editou `.env` (API keys, tokens) | `docker compose up -d tango-gateway --force-recreate` | `restart` nao recarrega env vars |
-| Editou `data/config/openclaw.json` | `docker compose restart tango-gateway` | O gateway rele o config no boot |
-| Mudou `Dockerfile` ou `docker-compose.yml` | `make build && docker compose up -d tango-gateway --force-recreate` | Precisa rebuildar a imagem |
-| Atualizou bootstrap templates | `make sync-bootstrap && docker compose restart tango-gateway` | Copia templates para workspaces |
+| Editou `.env` (API keys, tokens) | `make restart` | systemd rele `EnvironmentFile` no restart |
+| Editou `data/config/openclaw.json` | `make restart` | O gateway rele o config no boot |
+| Codigo do OpenClaw mudou | `make build && make restart` | Precisa rebuildar |
+| systemd unit mudou | `make install-service && make restart` | Recarrega o daemon |
+| Atualizou bootstrap templates | `make sync-bootstrap && make restart` | Copia templates para workspaces |
 | Memory leak / gateway travado | `make restart` | Restart rapido |
 
-**Regra geral**: mudou `.env` → `--force-recreate`. Mudou config JSON → `restart`. Mudou Dockerfile → `make build`.
+**Regra geral**: qualquer mudanca de config ou `.env` → `make restart`. Mudou codigo → `make build && make restart`.
 
 ### Atualizar OpenClaw do upstream
 
@@ -106,19 +110,19 @@ git add tango-openclaw && git commit -m "chore: update openclaw submodule"
 
 ### Arquivos de configuracao
 
-| Arquivo | Conteudo | Passado ao container? |
-|---------|----------|-----------------------|
-| `.env` | API keys, tokens, config do OpenClaw | Sim (via `env_file`) |
-| `.env.infra` | Credenciais de infraestrutura (Hetzner) | **Nao** - apenas scripts |
-| `data/config/openclaw.json` | Config do agente (modelo, canais, tools) | Sim (via volume) |
+| Arquivo | Conteudo | Lido por |
+|---------|----------|----------|
+| `.env` | API keys, tokens, config do OpenClaw | systemd `EnvironmentFile` |
+| `.env.infra` | Credenciais de infraestrutura (Hetzner) | Apenas scripts |
+| `data/config/openclaw.json` | Config do agente (modelo, canais, tools) | OpenClaw (`XDG_CONFIG_HOME`) |
 
 ### Fluxo completo
 
 ```
-1. make setup          # Gera .env, openclaw.json, diretorios, builda imagem
+1. make setup          # Gera .env, openclaw.json, diretorios, builda OpenClaw, instala service
 2. Editar .env         # Preencher API keys, token Telegram, User ID
 3. make setup          # Re-rodar para injetar Telegram User ID no config
-4. make up             # Sobe o gateway
+4. make up             # Inicia o gateway via systemd
 5. make deploy         # (VPS) Valida .env + rebuild + restart
 ```
 
@@ -139,12 +143,10 @@ git add tango-openclaw && git commit -m "chore: update openclaw submodule"
 | `DOMAIN`                  | _(vazio)_                | Dominio para HTTPS (ex: tango.exemplo.com) |
 | `OPENCLAW_CONFIG_DIR`     | `./data/config`          | Diretorio de config do OpenClaw    |
 | `OPENCLAW_WORKSPACE_DIR`  | `./data/workspace`       | Diretorio de trabalho do agente    |
-| `OPENCLAW_GATEWAY_BIND`   | `lan`                    | Modo de bind (`loopback` ou `lan`) |
-| `OPENCLAW_IMAGE`          | `tango-openclaw:latest`  | Nome da imagem Docker              |
-| `PROJECTS_DIR`            | `./projects`             | Diretorio de projetos git (montado no container) |
-| `GIT_USER_NAME`           | `Tango Dev Agent`        | Nome para commits do agente                      |
-| `GIT_USER_EMAIL`          | `dev@tango-agent.local`  | Email para commits do agente                     |
-| `GIT_TOKEN`               | _(vazio)_                | GitHub PAT para push via HTTPS                   |
+| `PROJECTS_DIR`            | `./projects`             | Diretorio de projetos git          |
+| `GIT_USER_NAME`           | `Tango Dev Agent`        | Nome para commits do agente        |
+| `GIT_USER_EMAIL`          | `dev@tango-agent.local`  | Email para commits do agente       |
+| `GIT_TOKEN`               | _(vazio)_                | GitHub PAT para push via HTTPS     |
 
 ### Credenciais de infraestrutura (.env.infra)
 
@@ -268,19 +270,17 @@ O Tango Agent pode acessar Gmail, Calendar, Drive, Contacts, Sheets e Docs via a
    ```
 4. Restart para carregar as novas env vars:
    ```bash
-   docker compose up -d tango-gateway
+   make restart
    ```
-5. Autenticar dentro do container:
+5. Autenticar:
    ```bash
-   docker compose exec tango-gateway bash
-   gog auth credentials /home/node/.openclaw/client_secret_*.json
+   gog auth credentials ~/tango-agent/data/config/client_secret_*.json
    gog auth add $GOG_ACCOUNT --services gmail,calendar,drive,contacts,docs,sheets
    # Mostra URL → abrir no browser → autorizar → copiar codigo de volta no terminal
    gog auth list  # verificar
-   exit
    ```
 
-Os tokens ficam persistidos em `data/config/gogcli/` via volume mount.
+Os tokens ficam persistidos em `data/config/gogcli/`.
 
 ## HTTPS com Caddy (opcional)
 
@@ -312,8 +312,12 @@ ssh root@VPS_IP 'bash -s' < scripts/harden-vps.sh
 # IMPORTANTE: teste o login ANTES de fechar a sessao root!
 ssh deploy@VPS_IP
 
-# 2. Instalar Docker no VPS
-ssh deploy@VPS_IP 'curl -fsSL https://get.docker.com | sh'
+# 2. Instalar dependencias no VPS
+# Node 22 via NodeSource
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs git jq ripgrep curl
+sudo corepack enable
+corepack prepare pnpm@latest --activate
 
 # === No VPS (ssh deploy@VPS_IP) ===
 
@@ -321,7 +325,7 @@ ssh deploy@VPS_IP 'curl -fsSL https://get.docker.com | sh'
 git clone --recurse-submodules https://github.com/lucastorress/tango-agent.git
 cd tango-agent
 
-# 4. Setup (gera .env com token automatico)
+# 4. Setup (gera .env com token automatico, builda, instala systemd service)
 make setup
 
 # 5. Editar .env no VPS com suas API keys
@@ -397,7 +401,7 @@ O OpenClaw e um projeto ativo com vulnerabilidades documentadas. Abaixo as princ
 O gateway pode crescer de 1.8GB para 4-6GB em dias de uso continuo.
 
 **Mitigacoes no Tango Agent**:
-- Memory limit: 4G (previne OOM do host)
+- `MemoryMax=4G` no systemd (previne OOM do host)
 - `make restart` para restart manual
 - `make doctor` para diagnostico
 - Deploy roda `openclaw doctor` automaticamente
@@ -442,9 +446,9 @@ Bots em grupos nao veem mensagens por padrao (precisa desabilitar via BotFather)
 tango-agent/
 ├── .env.example                # Template: variaveis do OpenClaw
 ├── .env.infra.example          # Template: credenciais de infra (Hetzner)
-├── docker-compose.yml          # Gateway + Caddy + CLI
 ├── Makefile                    # Atalhos operacionais
 ├── scripts/
+│   ├── tango-gateway.service   # systemd unit file
 │   ├── setup.sh                # Setup inicial (local + VPS)
 │   ├── deploy.sh               # Deploy com validacao
 │   ├── sync-bootstrap.sh       # Sincroniza templates → workspaces
@@ -454,7 +458,7 @@ tango-agent/
 ├── config/
 │   ├── openclaw.example.json   # Template de config OpenClaw
 │   ├── Caddyfile               # Config do reverse proxy
-│   ├── gitconfig               # Git config para o container (credential helper)
+│   ├── gitconfig               # Git config (credential helper, copiado para ~/.gitconfig)
 │   └── bootstrap/              # Templates de bootstrap dos agentes
 │       ├── tango/              # IDENTITY, SOUL, USER, AGENTS, HEARTBEAT
 │       ├── atlas/              # IDENTITY, SOUL, AGENTS
@@ -468,6 +472,7 @@ tango-agent/
 │   ├── workspace-pixel/        # Workspace do Pixel
 │   ├── workspace-hawk/         # Workspace do Hawk
 │   └── workspace-sentinel/     # Workspace do Sentinel
-├── projects/               # (gitignored) Projetos git montados no container
+├── docker/                     # Docker files arquivados (referencia)
+├── projects/                   # (gitignored) Projetos git dos agentes coding
 └── tango-openclaw/             # [submodule] OpenClaw
 ```

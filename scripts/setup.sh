@@ -36,15 +36,13 @@ mkdir -p data/config/identity backups
 PROJ_DIR="${PROJECTS_DIR:-./projects}"
 mkdir -p "$PROJ_DIR"
 
-# 3. Corrigir permissoes (uid 1000 = user 'node' no container)
-if command -v chown &>/dev/null; then
-    if [ "$(id -u)" -eq 0 ]; then
-        chown -R 1000:1000 data/ "$PROJ_DIR"
-        echo "Permissoes corrigidas (uid 1000)."
-    else
-        echo "AVISO: Rode como root no servidor para corrigir permissoes:"
-        echo "  sudo chown -R 1000:1000 data/ $PROJ_DIR"
-    fi
+# 3. Corrigir permissoes (user deploy)
+DEPLOY_UID=$(id -u deploy 2>/dev/null || echo "")
+if [ -n "$DEPLOY_UID" ] && [ "$(id -u)" -eq 0 ]; then
+    chown -R deploy:deploy data/ "$PROJ_DIR"
+    echo "Permissoes corrigidas (user deploy)."
+elif [ "$(id -u)" -ne 0 ] && [ "$(id -un)" = "deploy" ]; then
+    echo "Rodando como deploy, permissoes OK."
 fi
 
 # 4. Gerar .env se nao existir
@@ -122,14 +120,35 @@ done
 
 echo "Bootstrap files verificados."
 
-# 7. Build da imagem
+# 7. Build do OpenClaw
 echo ""
-echo "Building base OpenClaw image..."
-docker build -t tango-openclaw-base:latest \
-    --build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
-    ./tango-openclaw
-echo "Building Tango image (with gog)..."
-docker compose build tango-gateway
+echo "Building OpenClaw..."
+cd tango-openclaw
+NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
+pnpm build
+cd ..
+
+# 8. Copiar gitconfig
+if [ ! -f ~/.gitconfig ] || ! grep -q "credential.helper" ~/.gitconfig 2>/dev/null; then
+    cp config/gitconfig ~/.gitconfig
+    echo "gitconfig copiado para ~/.gitconfig"
+fi
+
+# 8b. Criar symlink ~/.openclaw -> data/config (OpenClaw usa $HOME/.openclaw)
+if [ ! -L ~/.openclaw ]; then
+    rm -rf ~/.openclaw
+    ln -sfn "$(pwd)/data/config" ~/.openclaw
+    echo "Symlink ~/.openclaw criado"
+fi
+
+# 9. Instalar service do systemd (apenas no Linux)
+if [ "$(uname)" = "Linux" ] && [ ! -f /etc/systemd/system/tango-gateway.service ]; then
+    echo "Instalando systemd service..."
+    sudo cp scripts/tango-gateway.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable tango-gateway
+    echo "Service instalado e habilitado."
+fi
 
 echo ""
 echo "=== Setup completo! ==="
