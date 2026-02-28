@@ -27,6 +27,20 @@ This is a **bootstrap/infrastructure repo**, not an application codebase. It wra
 | `GOG_KEYRING_PASSWORD` | Yes (`environment`) | Senha do keyring do gog (obrigatória em Docker) |
 | `GOG_ACCOUNT` | Yes (`environment`) | Conta Google padrão para o gog |
 
+### Build (2-step)
+
+O build usa duas etapas porque o `Dockerfile` da raiz estende a imagem base do OpenClaw:
+
+1. **Step 1** — `docker build ... ./tango-openclaw` → produz `tango-openclaw-base:latest` (OpenClaw + apt packages)
+2. **Step 2** — `docker compose build tango-gateway` → produz `tango-openclaw:latest` (base + gog + socat)
+
+`make build`, `make deploy`, `make setup` e `make update` executam os 2 steps. Rodar `docker compose build` sozinho **sem** o step 1 falha (imagem base não existe). O Makefile é o entry point.
+
+| Arquivo | Papel |
+|---------|-------|
+| `tango-openclaw/Dockerfile` | Imagem base OpenClaw (Node 22 + pnpm build + apt packages) |
+| `Dockerfile` (raiz) | Wrapper: base + gog CLI + socat |
+
 ### Docker services (tango-net bridge network)
 
 | Service | Profile | Description |
@@ -205,3 +219,13 @@ docs: description     # Documentation only
 VPS: git clone --recurse-submodules → make setup → edit .env → make deploy
 Updates: git pull → git submodule update --init --recursive → make deploy
 ```
+
+### Restart rules
+
+| Mudança | Comando | Motivo |
+|---------|---------|--------|
+| `.env` editado | `docker compose up -d tango-gateway --force-recreate` | `restart` não recarrega env vars |
+| `openclaw.json` editado | `docker compose restart tango-gateway` | Gateway relê o config no boot |
+| `Dockerfile` ou `docker-compose.yml` | `make build && docker compose up -d --force-recreate` | Precisa rebuildar a imagem |
+| Bootstrap templates | `make sync-bootstrap && docker compose restart tango-gateway` | Copia templates para workspaces |
+| Memory leak | `make restart` | Restart rápido |

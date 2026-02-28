@@ -36,7 +36,7 @@ make logs
 
 | Comando               | Descricao                                      |
 |-----------------------|-------------------------------------------------|
-| `make build`          | Builda a imagem Docker                          |
+| `make build`          | Builda a imagem Docker (2-step: base + gog)     |
 | `make up`             | Sobe o gateway (acesso via SSH tunnel)          |
 | `make up-proxy`       | Sobe gateway + Caddy com HTTPS (requer dominio) |
 | `make down`           | Para todos os containers                        |
@@ -54,7 +54,47 @@ make logs
 | `make backup`         | Backup local do data/ (tar.gz)                  |
 | `make snapshot`       | Backup local + snapshot Hetzner                 |
 
-## Atualizar OpenClaw
+## Build e Deploy
+
+### Como funciona o build (2-step)
+
+O build usa duas etapas porque o `Dockerfile` da raiz estende a imagem base do OpenClaw:
+
+```
+Step 1: docker build ./tango-openclaw → tango-openclaw-base:latest  (OpenClaw + apt packages)
+Step 2: docker compose build          → tango-openclaw:latest       (base + gog + socat)
+```
+
+`make build`, `make deploy`, `make setup` e `make update` executam os 2 steps automaticamente. **Nunca rode `docker compose build` direto** — a imagem base nao existira.
+
+### Deploy local → VPS
+
+```bash
+# 1. Faz as mudancas localmente
+# 2. Commita e push
+git add . && git commit -m "feat: descricao" && git push
+
+# 3. No VPS: pull + deploy
+ssh deploy@<VPS_IP>
+cd ~/tango-agent
+git pull
+git submodule update --init --recursive
+make deploy
+```
+
+### Quando precisa de restart
+
+| Mudanca | Comando | Motivo |
+|---------|---------|--------|
+| Editou `.env` (API keys, tokens) | `docker compose up -d tango-gateway --force-recreate` | `restart` nao recarrega env vars |
+| Editou `data/config/openclaw.json` | `docker compose restart tango-gateway` | O gateway rele o config no boot |
+| Mudou `Dockerfile` ou `docker-compose.yml` | `make build && docker compose up -d tango-gateway --force-recreate` | Precisa rebuildar a imagem |
+| Atualizou bootstrap templates | `make sync-bootstrap && docker compose restart tango-gateway` | Copia templates para workspaces |
+| Memory leak / gateway travado | `make restart` | Restart rapido |
+
+**Regra geral**: mudou `.env` → `--force-recreate`. Mudou config JSON → `restart`. Mudou Dockerfile → `make build`.
+
+### Atualizar OpenClaw do upstream
 
 ```bash
 make update
