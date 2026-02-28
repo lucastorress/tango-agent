@@ -94,6 +94,9 @@
           "exec": { "security": "deny" }
         },
         "skills": ["weather", "gog"],
+        "subagents": {
+          "allowAgents": ["atlas", "pixel", "hawk", "sentinel"]
+        },
         "heartbeat": {
           "every": "30m",
           "activeHours": { "start": "08:00", "end": "24:00" }
