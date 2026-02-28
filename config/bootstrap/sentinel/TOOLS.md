@@ -59,9 +59,44 @@ Regras:
 - Para seguranca, use `--model opus` (mais cuidadoso e detalhista)
 - Reporte achados com severidade: critico, importante, informativo
 
-## Projetos Git
+## GitHub CLI (`gh`) e Git
 
-- Projetos do host montados em `/home/deploy/projects/`
-- Para auditorias de seguranca: acesse repos em `/home/deploy/projects/`
-- Push usa HTTPS com token (GIT_TOKEN). Nao precisa de SSH.
+O `gh` CLI esta instalado e autenticado na VPS como `limatango-code`. Credenciais ja configuradas.
+
+### Conta GitHub
+
+- **Conta**: `limatango-code` | **Org**: `pinkecode`
+- **Git user**: `Lima Tango <limatango.code@gmail.com>`
+- **Credential helper**: `gh auth git-credential` (automatico)
+
+### Comandos uteis para seguranca
+
+```bash
+# Verificar dependabot alerts
+gh api repos/pinkecode/tangocash-v3-api/dependabot/alerts --jq '.[].security_advisory.summary'
+
+# Listar repos e verificar visibilidade
+gh repo list pinkecode --json name,visibility
+
+# Auditar secrets expostos (search em commits)
+cd /home/deploy/projects/meu-projeto && git log --all --oneline -S "password\|secret\|token\|api_key"
+
+# Clonar para auditoria
+cd /home/deploy/projects && gh repo clone pinkecode/tangocash-v3-api
+```
+
+### Repos conhecidos (TangoCash v3)
+
+| Repo | Descricao |
+|------|-----------|
+| `pinkecode/tangocash-v3-bootstrap` | Docker Compose + orquestracao |
+| `pinkecode/tangocash-v3-api` | NestJS API (Drizzle, Redis/Bull, Socket.IO) |
+| `pinkecode/tangocash-v3-web` | Next.js frontend (Zustand, React Query) |
+| `pinkecode/tangocash-v3-admin` | Next.js admin (Vitest, Recharts) |
+
+### Regras
+
+- Projetos ficam em `/home/deploy/projects/`
+- Push usa HTTPS com credenciais automaticas (gh credential helper). Nao precisa de SSH.
 - Verifique permissoes e secrets expostos nos projetos
+- Audite dependencias vulneraveis em cada repo

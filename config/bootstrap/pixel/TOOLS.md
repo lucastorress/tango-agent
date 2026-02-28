@@ -72,10 +72,103 @@ cd /home/deploy/projects/meu-projeto && claude -p "leia o README e resuma" --all
 - O CLI usa subscription Max Pro — **sem custo extra**. Prefira sobre suas proprias capacidades.
 - Reporte o resultado pro Tango de forma resumida, nao copie output bruto.
 
-## Projetos Git
+## GitHub CLI (`gh`) e Git
 
-- Projetos do host montados em `/home/deploy/projects/`
-- Para clonar: `cd /home/deploy/projects && git clone https://github.com/user/repo.git`
-- Push usa HTTPS com token (GIT_TOKEN). Nao precisa de SSH.
-- Seu workspace (`workspace-pixel/`) e para arquivos proprios, notas, scripts temporarios
+O `gh` CLI esta instalado e autenticado na VPS como `limatango-code`. Credenciais ja configuradas — nao precisa de setup manual.
+
+### Conta GitHub
+
+- **Conta**: `limatango-code`
+- **Organizacao**: `pinkecode` (repos privados do TangoCash)
+- **Auth**: `gh auth` via token (GIT_TOKEN do .env)
+- **Git user**: `Lima Tango <limatango.code@gmail.com>`
+- **Credential helper**: `gh auth git-credential` (automatico para HTTPS)
+
+### Comandos uteis
+
+```bash
+# Listar repos da org
+gh repo list pinkecode
+
+# Clonar repo privado (credenciais automaticas)
+cd /home/deploy/projects && gh repo clone pinkecode/tangocash-v3-api
+
+# Criar PR
+cd /home/deploy/projects/meu-projeto && gh pr create --title "feat: description" --body "..."
+
+# Ver PRs abertos
+gh pr list --repo pinkecode/tangocash-v3-api
+
+# Ver issues
+gh issue list --repo pinkecode/tangocash-v3-api
+
+# Push (credenciais automaticas via gh)
+git push origin feature/minha-branch
+```
+
+### Repos conhecidos (TangoCash v3)
+
+| Repo | Descricao |
+|------|-----------|
+| `pinkecode/tangocash-v3-bootstrap` | Docker Compose + orquestracao |
+| `pinkecode/tangocash-v3-api` | NestJS API (Drizzle, Redis/Bull, Socket.IO) |
+| `pinkecode/tangocash-v3-web` | Next.js frontend (Zustand, React Query) |
+| `pinkecode/tangocash-v3-admin` | Next.js admin (Vitest, Recharts) |
+
+### Regras
+
 - Projetos ficam em `/home/deploy/projects/`, NAO no workspace
+- Seu workspace (`workspace-pixel/`) e para arquivos proprios, notas, scripts temporarios
+- Push usa HTTPS com credenciais automaticas (gh credential helper). Nao precisa de SSH.
+- Sempre verifique `git status` antes de commitar
+- Nao force push sem justificativa
+
+## Google Workspace (`gog`)
+
+O `gog` CLI esta autenticado com `limatango.code@gmail.com`. Use para Gmail, Calendar, Drive e Docs.
+
+### Google Docs (relatorios, documentacao)
+
+```bash
+# Criar doc
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog docs create "Titulo do Documento" -a limatango.code@gmail.com
+
+# Escrever conteudo (aceita markdown)
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog docs write <docId> "conteudo aqui" -a limatango.code@gmail.com
+
+# Inserir conteudo adicional
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog docs insert <docId> "mais conteudo" -a limatango.code@gmail.com
+
+# Ler doc
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog docs cat <docId> -a limatango.code@gmail.com
+
+# Listar docs no Drive
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog drive ls -a limatango.code@gmail.com
+```
+
+### Gmail
+
+```bash
+# Buscar emails
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog gmail search "is:unread" -a limatango.code@gmail.com
+
+# Ler email
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog gmail read <messageId> -a limatango.code@gmail.com
+```
+
+### Calendar
+
+```bash
+# Ver eventos de hoje
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog calendar list -a limatango.code@gmail.com
+
+# Criar evento
+GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD gog calendar create "Reuniao" --start "2026-03-01T10:00:00" --end "2026-03-01T11:00:00" -a limatango.code@gmail.com
+```
+
+### Regras do gog
+
+- **Sempre** passe `GOG_KEYRING_PASSWORD=$GOG_KEYRING_PASSWORD` e `-a limatango.code@gmail.com`
+- O link do Google Doc e `https://docs.google.com/document/d/<docId>/edit` — envie esse link ao Tango
+- **NAO existe** `gog drive share` — docs criados ja ficam acessiveis pela conta
+- Para relatorios grandes: crie Google Doc em vez de mandar texto longo no Telegram

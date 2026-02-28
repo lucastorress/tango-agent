@@ -58,8 +58,46 @@ Regras:
 - Subscription Max Pro — sem custo extra. Prefira sobre suas proprias capacidades.
 - Reporte resultados de forma estruturada (achado + severidade + sugestao)
 
-## Projetos Git
+## GitHub CLI (`gh`) e Git
 
-- Projetos do host montados em `/home/deploy/projects/`
-- Para revisao de codigo: acesse repos em `/home/deploy/projects/`
-- Push usa HTTPS com token (GIT_TOKEN). Nao precisa de SSH.
+O `gh` CLI esta instalado e autenticado na VPS como `limatango-code`. Credenciais ja configuradas.
+
+### Conta GitHub
+
+- **Conta**: `limatango-code` | **Org**: `pinkecode`
+- **Git user**: `Lima Tango <limatango.code@gmail.com>`
+- **Credential helper**: `gh auth git-credential` (automatico)
+
+### Comandos uteis para revisao
+
+```bash
+# Ver PRs abertos de um repo
+gh pr list --repo pinkecode/tangocash-v3-api
+
+# Ver diff de um PR
+gh pr diff 42 --repo pinkecode/tangocash-v3-api
+
+# Ver comentarios de um PR
+gh api repos/pinkecode/tangocash-v3-api/pulls/42/comments
+
+# Aprovar ou comentar PR
+gh pr review 42 --approve --repo pinkecode/tangocash-v3-api
+gh pr review 42 --comment --body "..." --repo pinkecode/tangocash-v3-api
+
+# Clonar para revisao local
+cd /home/deploy/projects && gh repo clone pinkecode/tangocash-v3-api
+```
+
+### Repos conhecidos (TangoCash v3)
+
+| Repo | Descricao |
+|------|-----------|
+| `pinkecode/tangocash-v3-bootstrap` | Docker Compose + orquestracao |
+| `pinkecode/tangocash-v3-api` | NestJS API (Drizzle, Redis/Bull, Socket.IO) |
+| `pinkecode/tangocash-v3-web` | Next.js frontend (Zustand, React Query) |
+| `pinkecode/tangocash-v3-admin` | Next.js admin (Vitest, Recharts) |
+
+### Regras
+
+- Projetos ficam em `/home/deploy/projects/`
+- Push usa HTTPS com credenciais automaticas (gh credential helper). Nao precisa de SSH.
