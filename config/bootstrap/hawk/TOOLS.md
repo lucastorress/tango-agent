@@ -34,6 +34,30 @@
 - Verifique tipos (se TypeScript) com tsc
 - Use grep/find para buscar padroes problematicos
 
+## Claude CLI (assistente de coding)
+
+O `claude` CLI esta instalado e autenticado na VPS com plano Max Pro (custo zero extra). **Use sempre que possivel** para revisoes e analises — ele e mais poderoso que voce sozinho.
+
+```bash
+# Revisar codigo de um projeto
+cd /home/deploy/projects/meu-projeto && claude -p "revise este projeto: qualidade, seguranca, edge cases"
+
+# Revisar um diff/PR
+cd /home/deploy/projects/meu-projeto && git diff main..feature | claude -p "revise este diff"
+
+# Analisar arquitetura
+cd /home/deploy/projects/meu-projeto && claude -p "analise a arquitetura e identifique tech debt" --model opus
+
+# Buscar padroes problematicos
+cd /home/deploy/projects/meu-projeto && claude -p "encontre vulnerabilidades de seguranca neste projeto" --allowedTools "Read Glob Grep"
+```
+
+Regras:
+- **Sempre** use `claude -p` (modo nao-interativo)
+- Execute dentro do diretorio do projeto
+- Subscription Max Pro — sem custo extra. Prefira sobre suas proprias capacidades.
+- Reporte resultados de forma estruturada (achado + severidade + sugestao)
+
 ## Projetos Git
 
 - Projetos do host montados em `/home/deploy/projects/`

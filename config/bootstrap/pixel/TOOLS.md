@@ -28,6 +28,50 @@
 - Rode testes existentes antes de reportar conclusao
 - Se um teste quebrar, corrija ou reporte com contexto
 
+## Claude CLI (assistente de coding)
+
+O `claude` CLI esta instalado e autenticado na VPS com plano Max Pro. Use-o para tarefas complexas de coding que se beneficiam de um modelo mais poderoso (Opus/Sonnet).
+
+### SEMPRE use o Claude CLI para tarefas de coding
+
+O Claude CLI roda com subscription Max Pro (custo zero extra), enquanto suas chamadas normais consomem API key paga. **Prefira sempre o Claude CLI** para qualquer tarefa que envolva:
+
+- Escrever, editar ou refatorar codigo
+- Analisar codebase ou arquitetura
+- Gerar testes, documentacao, configs
+- Revisar PRs ou diffs
+- Pesquisar em projetos grandes
+- Qualquer tarefa que voce faria sozinho mas o Claude CLI faz melhor
+
+### Como usar
+
+```bash
+# Prompt simples (nao-interativo, retorna resposta)
+claude -p "analise este arquivo e sugira melhorias"
+
+# Com contexto de projeto (RECOMENDADO - entra no dir antes)
+cd /home/deploy/projects/meu-projeto && claude -p "explique a arquitetura"
+
+# Passando arquivo como input
+cat arquivo.ts | claude -p "refatore para usar async/await"
+
+# Modelo especifico (opus para tarefas complexas)
+claude -p "revise a seguranca deste codigo" --model opus
+
+# Output estruturado
+claude -p "liste os endpoints da API" --output-format json
+
+# Com ferramentas habilitadas (leitura de arquivos, etc)
+cd /home/deploy/projects/meu-projeto && claude -p "leia o README e resuma" --allowedTools "Read Glob Grep"
+```
+
+### Regras
+
+- **Sempre** use `claude -p` (modo print/nao-interativo) — nunca modo interativo
+- Execute dentro do diretorio do projeto (`cd projeto && claude -p ...`)
+- O CLI usa subscription Max Pro — **sem custo extra**. Prefira sobre suas proprias capacidades.
+- Reporte o resultado pro Tango de forma resumida, nao copie output bruto.
+
 ## Projetos Git
 
 - Projetos do host montados em `/home/deploy/projects/`
