@@ -76,8 +76,7 @@
       },
       "subagents": {
         "maxSpawnDepth": 1,
-        "maxConcurrent": 2,
-        "allowAgents": ["atlas", "pixel", "hawk", "sentinel"]
+        "maxConcurrent": 2
       }
     },
     "list": [
