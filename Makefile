@@ -1,7 +1,12 @@
 .PHONY: build up up-proxy down logs status cli setup deploy update health harden security-check backup snapshot doctor restart sync-bootstrap bot-dev bot-build bot-up bot-down bot-logs bot-restart
 
 build:
-	docker compose build
+	@echo "Building base OpenClaw image..."
+	docker build -t tango-openclaw-base:latest \
+		--build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
+		./tango-openclaw
+	@echo "Building Tango image (with gog)..."
+	docker compose build tango-gateway
 
 up:
 	docker compose up -d tango-gateway
@@ -40,7 +45,10 @@ update:
 	@echo "Atualizando OpenClaw do upstream..."
 	cd tango-openclaw && git fetch upstream && git merge upstream/main --no-edit
 	@echo "Rebuilding..."
-	docker compose build
+	docker build -t tango-openclaw-base:latest \
+		--build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
+		./tango-openclaw
+	docker compose build tango-gateway
 	docker compose up -d tango-gateway
 	@echo "Commitar submodule atualizado:"
 	@echo "  git add tango-openclaw && git commit -m 'chore: update openclaw submodule'"

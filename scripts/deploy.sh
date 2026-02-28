@@ -32,8 +32,12 @@ if [ ! -d "$PROJ_DIR" ]; then
 fi
 
 # Build (se falhar, nao derruba o gateway atual)
-echo "Building..."
-docker compose build
+echo "Building base image..."
+docker build -t tango-openclaw-base:latest \
+    --build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
+    ./tango-openclaw
+echo "Building Tango image..."
+docker compose build tango-gateway
 
 # Restart com minimo downtime
 echo "Restarting gateway..."

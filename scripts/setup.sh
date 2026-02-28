@@ -124,8 +124,12 @@ echo "Bootstrap files verificados."
 
 # 7. Build da imagem
 echo ""
-echo "Building Docker image..."
-docker compose build
+echo "Building base OpenClaw image..."
+docker build -t tango-openclaw-base:latest \
+    --build-arg OPENCLAW_DOCKER_APT_PACKAGES="git openssh-client jq ripgrep" \
+    ./tango-openclaw
+echo "Building Tango image (with gog)..."
+docker compose build tango-gateway
 
 echo ""
 echo "=== Setup completo! ==="

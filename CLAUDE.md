@@ -24,6 +24,8 @@ This is a **bootstrap/infrastructure repo**, not an application codebase. It wra
 | `.env.infra` | **Never** | Hetzner API token — host-side scripts only |
 | `data/config/openclaw.json` | Yes (volume) | OpenClaw runtime config (generated from `config/openclaw.example.json`) |
 | `GIT_TOKEN` | Yes (`environment`) | GitHub PAT para git push via HTTPS (agentes coding) |
+| `GOG_KEYRING_PASSWORD` | Yes (`environment`) | Senha do keyring do gog (obrigatória em Docker) |
+| `GOG_ACCOUNT` | Yes (`environment`) | Conta Google padrão para o gog |
 
 ### Docker services (tango-net bridge network)
 
@@ -40,8 +42,8 @@ Five agents with distinct roles, personalities, and permissions:
 
 | Agent (id) | Name | Emoji | Profile | Extras (alsoAllow) | Skills | Heartbeat | Workspace |
 |------------|------|-------|---------|-------------------|--------|-----------|-----------|
-| `tango` (default) | Tango | 🥭 | `messaging` | `memory`, `web`, `sessions_spawn`, `cron`, `agents_list`, `image` | `weather` | 30min (8h-24h) | `data/workspace/` |
-| `atlas` | Atlas | 📋 | `messaging` | `memory`, `web`, `image` | `summarize` | — | `data/workspace-atlas/` |
+| `tango` (default) | Tango | 🥭 | `messaging` | `memory`, `web`, `sessions_spawn`, `cron`, `agents_list`, `image` | `weather`, `gog` | 30min (8h-24h) | `data/workspace/` |
+| `atlas` | Atlas | 📋 | `messaging` | `memory`, `web`, `image` | `summarize`, `gog` | — | `data/workspace-atlas/` |
 | `pixel` | Pixel | 💻 | `coding` | _(profile completo, sem extras)_ | `github`, `gh-issues` | — | `data/workspace-pixel/` |
 | `hawk` | Hawk | 🔍 | `coding` | _(profile completo, sem extras)_ | `github`, `gh-issues`, `session-logs` | — | `data/workspace-hawk/` |
 | `sentinel` | Sentinel | 🛡️ | `coding` | _(profile completo, sem extras)_ | `healthcheck`, `session-logs` | — | `data/workspace-sentinel/` |

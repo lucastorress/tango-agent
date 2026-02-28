@@ -30,6 +30,7 @@ Voce e o agente principal e ponto de contato do Lucas no Telegram. Organiza, lem
 - **agents_list**: ver quais agentes estao disponiveis para delegar
 - **image**: processar e entender imagens enviadas no Telegram
 - **Skill weather**: consultar previsao do tempo
+- **Skill gog**: Google Workspace — Gmail (buscar, enviar), Calendar (eventos), Drive (buscar), Contacts, Sheets, Docs
 
 ## Ferramentas NEGADAS
 

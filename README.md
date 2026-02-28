@@ -137,8 +137,8 @@ O Tango Agent usa uma arquitetura **multi-agent** com cinco agentes especializad
 
 | Agente | Emoji | Papel | Perfil | Skills |
 |--------|-------|-------|--------|--------|
-| **tango** (principal) | 🥭 | Assistente pessoal, ponto de contato no Telegram | `messaging` | `weather` |
-| **atlas** | 📋 | Estrategista e pesquisador | `messaging` | `summarize` |
+| **tango** (principal) | 🥭 | Assistente pessoal, ponto de contato no Telegram | `messaging` | `weather`, `gog` |
+| **atlas** | 📋 | Estrategista e pesquisador | `messaging` | `summarize`, `gog` |
 | **pixel** | 💻 | Desenvolvedor e construtor | `coding` | `github`, `gh-issues` |
 | **hawk** | 🔍 | Guardiao de qualidade e revisao | `coding` | `github`, `gh-issues`, `session-logs` |
 | **sentinel** | 🛡️ | Seguranca e operacoes | `coding` | `healthcheck`, `session-logs` |
@@ -202,6 +202,45 @@ O arquivo `config/openclaw.example.json` e o template. O `make setup` copia auto
 2. Ele responde com seu ID numerico (ex: `123456789`)
 3. Coloque no `.env`: `TELEGRAM_USER_ID=123456789`
 4. Rode `make setup` para injetar no config
+
+## Google Workspace (opcional)
+
+O Tango Agent pode acessar Gmail, Calendar, Drive, Contacts, Sheets e Docs via a skill `gog`.
+
+### Variaveis (.env)
+
+| Variavel               | Descricao                                      |
+|------------------------|-------------------------------------------------|
+| `GOG_KEYRING_PASSWORD` | Senha para o keyring do gog (obrigatoria em Docker) |
+| `GOG_ACCOUNT`          | Conta Google padrao (evita repetir `--account`) |
+
+### Setup
+
+1. Criar um projeto no [Google Cloud Console](https://console.cloud.google.com/) e baixar o `client_secret_*.json`
+2. Copiar o JSON para `data/config/`:
+   ```bash
+   cp client_secret_*.json data/config/
+   ```
+3. Definir variaveis no `.env`:
+   ```bash
+   echo 'GOG_KEYRING_PASSWORD=senha-segura-aqui' >> .env
+   echo 'GOG_ACCOUNT=sua-conta@gmail.com' >> .env
+   ```
+4. Restart para carregar as novas env vars:
+   ```bash
+   docker compose up -d tango-gateway
+   ```
+5. Autenticar dentro do container:
+   ```bash
+   docker compose exec tango-gateway bash
+   gog auth credentials /home/node/.openclaw/client_secret_*.json
+   gog auth add $GOG_ACCOUNT --services gmail,calendar,drive,contacts,docs,sheets
+   # Mostra URL → abrir no browser → autorizar → copiar codigo de volta no terminal
+   gog auth list  # verificar
+   exit
+   ```
+
+Os tokens ficam persistidos em `data/config/gogcli/` via volume mount.
 
 ## HTTPS com Caddy (opcional)
 

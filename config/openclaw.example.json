@@ -94,7 +94,7 @@
           "deny": ["gateway", "group:runtime"],
           "exec": { "security": "deny" }
         },
-        "skills": ["weather"],
+        "skills": ["weather", "gog"],
         "heartbeat": {
           "every": "30m",
           "activeHours": { "start": "08:00", "end": "24:00" }
@@ -112,7 +112,7 @@
           "deny": ["gateway", "group:runtime"],
           "exec": { "security": "deny" }
         },
-        "skills": ["summarize"],
+        "skills": ["summarize", "gog"],
         "workspace": "workspace-atlas"
       },
       {

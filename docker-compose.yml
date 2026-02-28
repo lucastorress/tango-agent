@@ -6,11 +6,7 @@ networks:
 
 services:
   tango-gateway:
-    build:
-      context: ./tango-openclaw
-      dockerfile: Dockerfile
-      args:
-        OPENCLAW_DOCKER_APT_PACKAGES: "git openssh-client jq ripgrep"
+    build: .
     image: ${OPENCLAW_IMAGE:-tango-openclaw:latest}
     container_name: tango-gateway
     restart: unless-stopped
@@ -24,6 +20,9 @@ services:
       GIT_COMMITTER_NAME: ${GIT_USER_NAME:-Tango Dev Agent}
       GIT_COMMITTER_EMAIL: ${GIT_USER_EMAIL:-dev@tango-agent.local}
       GIT_TOKEN: ${GIT_TOKEN:-}
+      GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD:-}
+      GOG_ACCOUNT: ${GOG_ACCOUNT:-}
+      XDG_CONFIG_HOME: /home/node/.openclaw
     volumes:
       - ${OPENCLAW_CONFIG_DIR:-./data/config}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR:-./data/workspace}:/home/node/.openclaw/workspace
@@ -98,11 +97,7 @@ services:
     profiles: ["proxy"]
 
   tango-cli:
-    build:
-      context: ./tango-openclaw
-      dockerfile: Dockerfile
-      args:
-        OPENCLAW_DOCKER_APT_PACKAGES: "git openssh-client jq ripgrep"
+    build: .
     image: ${OPENCLAW_IMAGE:-tango-openclaw:latest}
     container_name: tango-cli
     env_file: .env
@@ -115,6 +110,9 @@ services:
       GIT_COMMITTER_NAME: ${GIT_USER_NAME:-Tango Dev Agent}
       GIT_COMMITTER_EMAIL: ${GIT_USER_EMAIL:-dev@tango-agent.local}
       GIT_TOKEN: ${GIT_TOKEN:-}
+      GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD:-}
+      GOG_ACCOUNT: ${GOG_ACCOUNT:-}
+      XDG_CONFIG_HOME: /home/node/.openclaw
     volumes:
       - ${OPENCLAW_CONFIG_DIR:-./data/config}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR:-./data/workspace}:/home/node/.openclaw/workspace
