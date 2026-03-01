@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "ae6f8219-4475-441f-8010-1ecf8922c0d6",
+      "agentId": "tango",
+      "sessionKey": "agent:tango:telegram:direct:86295506",
+      "name": "Monitoria de Carga — 15min",
+      "enabled": false,
+      "createdAtMs": 1772298213945,
+      "updatedAtMs": 1772300929647,
+      "schedule": {
+        "kind": "every",
+        "everyMs": 900000,
+        "anchorMs": 1772298213945
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Analisar carga atual dos agentes (Pixel, Atlas, Hawk, Sentinel).\n\nVerifique no workspace:\n- sessions_list para contar sessões ativas por agente\n- memory/agentes-config.md para limites\n- memory/fila-agentes.md para tarefas pendentes\n\nRetorne resumo: 'Pixel: 1/2 | Atlas: 2/3 | Hawk: 0/2 | Sentinel: 0/1 | Fila: 3 pendentes'"
+      },
+      "delivery": {
+        "mode": "announce",
+        "channel": "telegram"
+      },
+      "state": {
+        "lastRunAtMs": 1772300913957,
+        "lastRunStatus": "ok",
+        "lastStatus": "ok",
+        "lastDurationMs": 15690,
+        "lastDelivered": true,
+        "lastDeliveryStatus": "delivered",
+        "consecutiveErrors": 0
+      }
+    },
+    {
+      "id": "e1b8d2ca-2655-4ca9-9e22-89f36383ce43",
+      "agentId": "tango",
+      "sessionKey": "agent:tango:telegram:direct:86295506",
+      "name": "Distribuição de Tarefas — 30min",
+      "enabled": true,
+      "createdAtMs": 1772298213966,
+      "updatedAtMs": 1772337870553,
+      "schedule": {
+        "kind": "every",
+        "everyMs": 1800000,
+        "anchorMs": 1772298213966
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Revisar e distribuir tarefas da fila.\n\n1. Leia memory/fila-agentes.md\n2. Compare com agentes-config.md (horários e limites)\n3. Delegue a tarefa com menor carga usando sessions_send [TASK]\n4. Atualize memory/historico-distribuicao.md com timestamp\n\nSe não há tarefas ou todos estão no limite, retorne status apenas."
+      },
+      "delivery": {
+        "mode": "announce",
+        "channel": "telegram"
+      },
+      "state": {
+        "nextRunAtMs": 1772339624600,
+        "lastRunAtMs": 1772337824600,
+        "lastRunStatus": "ok",
+        "lastStatus": "ok",
+        "lastDurationMs": 45953,
+        "lastDeliveryStatus": "delivered",
+        "consecutiveErrors": 0,
+        "lastDelivered": true
+      }
+    }
+  ]
+}
